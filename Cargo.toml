@@ -5,9 +5,13 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[lib]
+path = "src/lib.rs"
+
 [dependencies]
 anyhow = "*"
 tree-sitter = "0.20.10"
+tree-sitter-python = { path = "tree-sitter-python" }
 
 [build-dependencies]
-cc="*"
+cc = "*"
