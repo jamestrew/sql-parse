@@ -8,6 +8,6 @@ fn main() {
         .include(&dir)
         .file(dir.join("parser.c"))
         .file(dir.join("scanner.c"))
+        .warnings(false)
         .compile("tree-sitter-python");
 }
-

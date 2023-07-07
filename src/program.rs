@@ -34,6 +34,11 @@ impl Program {
             args.search_paths
         }
     }
+
+    pub fn run(&mut self) {
+        println!("running");
+        todo!()
+    }
 }
 
 impl From<Cli> for Program {

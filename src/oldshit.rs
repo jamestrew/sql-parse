@@ -12,7 +12,7 @@ impl From<&str> for FileMatches {
         let matches = value
             .lines()
             .skip(1)
-            .map(|line| Match::from(line))
+            .map(Match::from)
             .collect();
 
         Self {
@@ -30,7 +30,7 @@ struct Match {
 
 impl From<&str> for Match {
     fn from(value: &str) -> Self {
-        let mut line = value.trim().split(":");
+        let mut line = value.trim().split(':');
         let lnum = line.next().unwrap().parse::<usize>().unwrap();
         let col = line.next().unwrap().parse::<usize>().unwrap();
         Self {

@@ -4,8 +4,8 @@ use sql_parser::program::Program;
 
 fn main() {
     let args = Cli::parse();
-    let program = Program::from(args);
-    println!("{:?}", program);
+    let mut program = Program::from(args);
+    program.run();
 }
 
 // 1. fetch files of interest with `rg --files-with-matches crs\.execute <PATH>`

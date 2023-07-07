@@ -51,10 +51,10 @@ pub struct RegexpOption {
 impl From<&RegexpOption> for Regex {
     fn from(value: &RegexpOption) -> Self {
         if let Some(pattern) = &value.regexp {
-            Self::new(&pattern)
+            Self::new(pattern)
                 .unwrap_or_else(|_| error_exit!("Invalid regexp expression: {}", pattern))
         } else if let Some(file_path) = &value.regexp_file {
-            let pattern = std::fs::read_to_string(&file_path).unwrap_or_else(|_| {
+            let pattern = std::fs::read_to_string(file_path).unwrap_or_else(|_| {
                 error_exit!("Failed to read provided regexp file: {:?}", file_path)
             });
             Self::new(&pattern)
