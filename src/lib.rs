@@ -1,10 +1,12 @@
+pub mod cli;
+pub mod utils;
+pub mod program;
 mod oldshit;
 
-
-use tree_sitter::{Parser, Query, QueryCursor};
 use std::io;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use tree_sitter::{Parser, Query, QueryCursor};
 
 #[allow(dead_code)]
 fn treesitter_stuff() {
@@ -60,7 +62,6 @@ fn find_pattern(sql_text: &str) {
     let mat = re.find(sql_text).unwrap();
     println!("{:?}", mat);
 }
-
 
 #[cfg(test)]
 mod test {

@@ -48,22 +48,19 @@ crs.execute("""
 crs.execute(f"""
     SELECT *
     FROM {schema}.foo
-    WHERE x = ?
+    WHERE x = ?;
+
+
+    DECLARE @my_table (
+        foo INT,
+        bar VARCHAR(20)
+    );
+    SELECT
+        42,
+        'hello'
+    INTO @my_table;
 """, x)
 
 crs.executemany("SELECT * FROM foo")
 crs.executemany(f"SELECT * FROM foo where x = {x}")
 
-"""
-
-(call
-  (attribute
-    object: (identifier) @object (#eq? @object "crs")
-    attribute: (identifier) @attribute (#eq? @attribute "execute"))
-
-  (string
-    (string_content) @sql_string)
-)
-
-(string_content) @sql_string
-"""
