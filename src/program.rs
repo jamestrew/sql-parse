@@ -1,12 +1,11 @@
-use crate::cli::Cli;
 use crate::error_exit;
+use crate::{cli::Cli, treesitter::Treesitter};
 
 use regex::Regex;
 use std::{io::BufRead, path::PathBuf};
 
-#[derive(Debug)]
 pub struct Program {
-    pub(crate) treesitter_query: String,
+    pub(crate) treesitter: Treesitter,
     pub(crate) regexp: Regex,
     pub(crate) search_paths: Vec<PathBuf>,
 }
@@ -50,8 +49,12 @@ impl From<Cli> for Program {
             )
         });
 
+        let treesitter = Treesitter::try_from(ts_query).unwrap_or_else(|err| {
+            error_exit!("{}", err);
+        });
+
         Self {
-            treesitter_query: ts_query,
+            treesitter,
             regexp: Regex::from(&args.regexp),
             search_paths: Self::get_search_path(args),
         }

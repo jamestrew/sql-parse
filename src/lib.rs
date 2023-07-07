@@ -1,6 +1,7 @@
 pub mod cli;
-pub mod utils;
 pub mod program;
+mod utils;
+mod treesitter;
 mod oldshit;
 
 use std::io;
