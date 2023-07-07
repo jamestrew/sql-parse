@@ -1,70 +1,87 @@
-#![allow(dead_code)]
+mod oldshit;
+
+
+use tree_sitter::{Parser, Query, QueryCursor};
+use std::io;
 use std::path::PathBuf;
+use std::process::{Command, Stdio};
 
-struct FileMatches {
-    path: PathBuf,
-    matches: Vec<Match>,
-}
+#[allow(dead_code)]
+fn treesitter_stuff() {
+    let mut parser = Parser::new();
+    parser
+        .set_language(tree_sitter_python::language())
+        .expect("Error loading Python grammar");
 
-impl From<&str> for FileMatches {
-    fn from(value: &str) -> Self {
-        let heading = value.lines().next().unwrap().trim();
-        let matches = value
-            .lines()
-            .skip(1)
-            .map(|line| Match::from(line))
-            .collect();
+    let source_code = include_str!("../test/b.py");
+    let tree = parser.parse(source_code, None).unwrap();
+    let root_node = tree.root_node();
 
-        Self {
-            path: PathBuf::from(heading),
-            matches,
+    let query = include_str!("../queries/execute.scm");
+
+    let q = Query::new(tree_sitter_python::language(), query).unwrap();
+    let mut query_cursor = QueryCursor::new();
+
+    let capture_names = q.capture_names();
+
+    let matches = query_cursor.matches(&q, root_node, source_code.as_bytes());
+    for mat in matches {
+        for cap in mat.captures {
+            let capture_name = &capture_names[cap.index as usize];
+            if capture_name == "sql" {
+                let start_pos = cap.node.start_position();
+                let text = &source_code[cap.node.byte_range()];
+                println!("{}: {}", start_pos.row + 1, text);
+            }
         }
     }
 }
 
-struct Match {
-    lnum: usize,
-    col_start: usize,
-    col_end: usize,
+#[allow(dead_code)]
+fn files_with_matches() -> anyhow::Result<&'static [PathBuf]> {
+    let _output = Command::new("rg")
+        .arg("--files-with-matches")
+        .arg("--color=never")
+        .arg("crs\\.execute")
+        .arg("test")
+        .stdout(Stdio::piped())
+        .spawn()?
+        .stdout
+        .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "Failed to capture rg output"))?;
+
+    todo!()
 }
 
-impl From<&str> for Match {
-    fn from(value: &str) -> Self {
-        let mut line = value.trim().split(":");
-        let lnum = line.next().unwrap().parse::<usize>().unwrap();
-        let col = line.next().unwrap().parse::<usize>().unwrap();
-        Self {
-            lnum,
-            col_start: col,
-            col_end: col,
-        }
-    }
+#[allow(dead_code)]
+fn find_pattern(sql_text: &str) {
+    use regex::Regex;
+
+    let re = Regex::new(r"(DECLARE @[\w_]+)").unwrap();
+    let mat = re.find(sql_text).unwrap();
+    println!("{:?}", mat);
 }
+
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    mod test_regex {
+        use crate::*;
 
-    #[test]
-    fn match_from() {
-        let line = r#"3:1:crs.execute("SELECT * FROM foo")"#;
-        let m = Match::from(line);
-        assert_eq!(m.lnum, 3);
-        assert_eq!(m.col_start, 1);
-        assert_eq!(m.col_end, 1);
-    }
+        const SQL: &str = "
+            DECLARE @my_table (
+                foo INT,
+                bar VARCHAR(20)
+            );
+            SELECT
+                42,
+                'hello'
+            INTO @my_table;
+        ";
 
-    #[test]
-    fn filematches_from() {
-        let lines = r#"test/a.py
-3:1:crs.execute("SELECT * FROM foo")
-5:1:crs.execute("SELECT * FROM foo")
-6:1:crs.execute("SELECT * FROM foo")
-7:1:crs.execute("SELECT * FROM foo")
-8:1:crs.execute("SELECT * FROM foo")"#;
-
-        let fm = FileMatches::from(lines);
-        assert_eq!(fm.path.to_str().unwrap(), "test/a.py");
-        assert_eq!(fm.matches.len(), 5);
+        #[test]
+        fn f() {
+            find_pattern(SQL);
+            assert!(false);
+        }
     }
 }

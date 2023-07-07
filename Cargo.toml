@@ -1,7 +1,8 @@
 [package]
-name = "pa-sct"
+name = "sql-parser"
 version = "0.1.0"
 edition = "2021"
+authors = ["James Trew"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -10,6 +11,8 @@ path = "src/lib.rs"
 
 [dependencies]
 anyhow = "*"
+clap = { version = "4.3.11", features = ["derive"] }
+regex = "1.9.0"
 tree-sitter = "0.20.10"
 tree-sitter-python = { path = "tree-sitter-python" }
 

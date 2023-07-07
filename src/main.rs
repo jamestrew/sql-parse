@@ -1,39 +1,48 @@
-use std::io;
 use std::path::PathBuf;
-use std::process::{Command, Stdio};
 
-use tree_sitter::{Parser, Query, QueryCursor};
+use clap::{Args, Parser};
+
+#[derive(Parser)]
+#[command(author,version,about,long_about=None)]
+struct Cli {
+    /// Path for treesitter query file
+    #[arg(short, long, value_name = "FILE")]
+    treesitter_query: PathBuf,
+
+    #[command(flatten)]
+    regexp: RegexpOption,
+
+    /// Set regexp search to be case insensitive. Default: false.
+    #[arg(short = 'i', long, default_value_t = false)]
+    ignore_case: bool,
+
+    /// Files to search through
+    search_path: Vec<PathBuf>,
+}
+
+#[derive(Debug, Args)]
+#[group(required = true, multiple = false)]
+struct RegexpOption {
+    /// Regexp pattern
+    #[arg(
+        short = 'e',
+        long,
+        value_name = "PATTERN",
+        conflicts_with = "regexp_file"
+    )]
+    regexp: Option<String>,
+
+    /// Regexp pattern as a file
+    #[arg(short = 'E', long, value_name = "FILE", conflicts_with = "regexp")]
+    regexp_file: Option<PathBuf>,
+}
 
 fn main() -> anyhow::Result<()> {
-    let mut parser = Parser::new();
-    parser
-        .set_language(tree_sitter_python::language())
-        .expect("Error loading Python grammar");
+    let args = Cli::parse();
 
-    let source_code = include_str!("../test/b.py");
-    let tree = parser.parse(source_code, None).unwrap();
-    let root_node = tree.root_node();
-
-    let query = include_str!("../queries/execute.scm");
-
-    let q = Query::new(tree_sitter_python::language(), query).unwrap();
-    let mut query_cursor = QueryCursor::new();
-
-    let capture_names = q.capture_names();
-
-    let matches = query_cursor.matches(&q, root_node, source_code.as_bytes());
-    for mat in matches {
-        for cap in mat.captures {
-            let capture_name = &capture_names[cap.index as usize];
-            if capture_name == "sql" {
-                let start_pos = cap.node.start_position();
-                let text = &source_code[cap.node.byte_range()];
-                println!("{}: {}", start_pos.row + 1, text);
-            }
-        }
-    }
-
-    println!("hello world");
+    println!("{:?}", args.treesitter_query);
+    println!("{:?}", args.regexp);
+    println!("{:?}", args.search_path);
     Ok(())
 }
 
@@ -42,18 +51,3 @@ fn main() -> anyhow::Result<()> {
 // this depends on the ts query but eg. crs.execute[many]
 // 3. use regex to match for issue keywords
 // 4. return the file and line num of the issue spot
-
-#[allow(dead_code)]
-fn files_with_matches() -> anyhow::Result<&'static [PathBuf]> {
-    let _output = Command::new("rg")
-        .arg("--files-with-matches")
-        .arg("--color=never")
-        .arg("crs\\.execute")
-        .arg("test")
-        .stdout(Stdio::piped())
-        .spawn()?
-        .stdout
-        .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "Failed to capture rg output"))?;
-
-    todo!()
-}
