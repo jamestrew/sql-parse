@@ -1,8 +1,9 @@
 [package]
-name = "sql-parser"
+name = "sql-parse"
 version = "0.1.0"
 edition = "2021"
 authors = ["James Trew"]
+description = "Use the power of tree-sitter and ripgrep to parse some Python embedded SQL code."
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -13,7 +14,6 @@ path = "src/lib.rs"
 anyhow = "*"
 atty = "0.2.14"
 clap = { version = "4.3.11", features = ["derive"] }
-regex = "1.9.0"
 tree-sitter = "0.20.10"
 tree-sitter-python = { path = "tree-sitter-python" }
 

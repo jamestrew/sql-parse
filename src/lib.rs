@@ -1,8 +1,8 @@
 pub mod cli;
-pub mod program;
-mod utils;
-mod treesitter;
 mod oldshit;
+pub mod program;
+mod treesitter;
+pub mod utils;
 
 use std::io;
 use std::path::PathBuf;
@@ -52,38 +52,48 @@ fn files_with_matches() -> anyhow::Result<&'static [PathBuf]> {
         .stdout
         .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "Failed to capture rg output"))?;
 
+    //     use std::io::Read;
+    //     use std::process::{Command, Stdio};
+    //
+    //     let text = "\
+    //     SELECT *
+    //     FROM {schema}.foo
+    //     WHERE x = ?;
+    //
+    //
+    //     DECLARE @my_table (
+    //         foo INT,
+    //         bar VARCHAR(20)
+    //     );
+    //     SELECT
+    //         42,
+    //         'hello'
+    //     INTO @my_table;
+    // ";
+    //     let echo_child = Command::new("echo")
+    //         .arg(text)
+    //         .stdout(Stdio::piped())
+    //         .spawn()
+    //         .unwrap();
+    //
+    //     let rg_child = Command::new("rg")
+    //         .arg("--line-number")
+    //         .arg("--column")
+    //         .arg("--color=never")
+    //         .arg("SELECT")
+    //         .stdin(Stdio::from(echo_child.stdout.unwrap()))
+    //         .stdout(Stdio::piped())
+    //         .spawn()
+    //         .unwrap();
+    //
+    //     let mut output = String::new();
+    //     rg_child
+    //         .stdout
+    //         .unwrap()
+    //         .read_to_string(&mut output)
+    //         .unwrap();
+    //
+    //     println!("{}", output);
+
     todo!()
-}
-
-#[allow(dead_code)]
-fn find_pattern(sql_text: &str) {
-    use regex::Regex;
-
-    let re = Regex::new(r"(DECLARE @[\w_]+)").unwrap();
-    let mat = re.find(sql_text).unwrap();
-    println!("{:?}", mat);
-}
-
-#[cfg(test)]
-mod test {
-    mod test_regex {
-        use crate::*;
-
-        const SQL: &str = "
-            DECLARE @my_table (
-                foo INT,
-                bar VARCHAR(20)
-            );
-            SELECT
-                42,
-                'hello'
-            INTO @my_table;
-        ";
-
-        #[test]
-        fn f() {
-            find_pattern(SQL);
-            assert!(false);
-        }
-    }
 }

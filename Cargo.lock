@@ -274,14 +274,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "sql-parser"
+name = "sql-parse"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "atty",
  "cc",
  "clap",
- "regex",
  "tree-sitter",
  "tree-sitter-python",
 ]

@@ -7,6 +7,18 @@ use crate::error_exit;
 type SourceCode<'a> = &'a str;
 
 const SQL_CAPTURE: &str = "sql";
+const STRING_START: &str = "ss";
+const STRING_END: &str = "se";
+const MANDATORY_CAPTURE_GROUPS: &[&'static str; 3] = &[SQL_CAPTURE, STRING_START, STRING_END];
+
+fn check_capture_groups(capture_names: &[String]) -> Option<&'static str> {
+    for &capture_group in MANDATORY_CAPTURE_GROUPS {
+        if !capture_names.iter().any(|name| name == capture_group) {
+            return Some(capture_group);
+        }
+    }
+    None
+}
 
 pub struct Treesitter {
     parser: Parser,
@@ -46,9 +58,10 @@ impl TryFrom<String> for Treesitter {
             .map_err(|_| anyhow!("Failed to create tree-sitter query. Verify query syntax."))?;
         let capture_names: Vec<String> = query.capture_names().iter().cloned().collect();
 
-        if !capture_names.contains(&SQL_CAPTURE.to_owned()) {
+        if let Some(missing) = check_capture_groups(&capture_names) {
             return Err(anyhow!(
-                "tree-sitter query must contain 'sql' capture group."
+                "tree-sitter query must contain '{}' capture group.",
+                missing
             ));
         }
 
@@ -59,3 +72,6 @@ impl TryFrom<String> for Treesitter {
         })
     }
 }
+
+
+
