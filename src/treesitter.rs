@@ -46,19 +46,33 @@ const MANDATORY_CAPTURE_GROUPS: &[CaptureGroup] = &[
 ];
 
 fn check_capture_groups(capture_names: &[CaptureGroup]) -> Option<CaptureGroup> {
-    for &capture_group in MANDATORY_CAPTURE_GROUPS {
-        if !capture_names.contains(&capture_group) {
-            return Some(capture_group);
-        }
-    }
-    None
+    MANDATORY_CAPTURE_GROUPS.iter().find(|&&capture_group| !capture_names.contains(&capture_group)).copied()
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct Position {
+    pub byte_range: Range<usize>,
+    pub point: Point,
 }
 
 #[derive(Debug, Clone)]
 pub struct SqlBlock {
-    pub byte_range: Range<usize>,
-    pub start: Point,
-    pub end: Point,
+    pub string_start: Position,
+    pub string_end: Position,
+}
+
+impl SqlBlock {
+    pub fn inner_text_range(&self) -> Range<usize> {
+        self.string_start.byte_range.end..self.string_end.byte_range.start
+    }
+
+    pub fn inner_text<'a>(&'a self, code: &'a str) -> &'a str {
+        &code[self.inner_text_range()]
+    }
+
+    pub fn start_line_num(&self) -> usize {
+        self.string_start.point.row + 1
+    }
 }
 
 pub struct Treesitter {
@@ -79,10 +93,8 @@ impl Treesitter {
 
         let mut sql_blocks = Vec::new();
         for m in matches {
-            let mut start_byte = 0;
-            let mut end_byte = 0;
-            let mut start_point = Default::default();
-            let mut end_point = Default::default();
+            let mut string_start: Position = Default::default();
+            let mut string_end: Position = Default::default();
 
             m.captures
                 .iter()
@@ -90,20 +102,19 @@ impl Treesitter {
                 .filter(|(_cap, grp)| MANDATORY_CAPTURE_GROUPS.contains(grp))
                 .for_each(|(cap, grp)| match grp {
                     CaptureGroup::StringStart => {
-                        start_byte = cap.node.end_byte();
-                        start_point = cap.node.start_position();
+                        string_start.byte_range = cap.node.byte_range();
+                        string_start.point = cap.node.start_position();
                     }
                     CaptureGroup::StringEnd => {
-                        end_byte = cap.node.start_byte();
-                        end_point = cap.node.end_position();
+                        string_end.byte_range = cap.node.byte_range();
+                        string_end.point = cap.node.start_position();
                     }
                     _ => {}
                 });
 
             sql_blocks.push(SqlBlock {
-                byte_range: start_byte..end_byte,
-                start: start_point,
-                end: end_point,
+                string_start,
+                string_end,
             });
         }
         sql_blocks
@@ -183,15 +194,13 @@ crs.execute(f"""
             "\n    SELECT 6 FROM foo where x = {x} AND y = {y}\n",
         ];
 
-        // println!("{code}\n");
-
-        // let mut code = String::from(code);
         let mut ts = get_ts(QUERY);
 
         let blocks = ts.sql_blocks(code);
 
+        assert_eq!(blocks.len(), expect.len());
         for (idx, &sql) in expect.iter().enumerate() {
-            let snippet = &code[blocks[idx].clone().byte_range];
+            let snippet = &code[blocks[idx].inner_text_range()];
             assert_eq!(sql, snippet);
         }
     }

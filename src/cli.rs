@@ -35,16 +35,16 @@ impl Commands {
             Commands::TS(Basics {
                 search_paths,
                 treesitter_query,
-            }) => (&search_paths, &treesitter_query),
+            }) => (search_paths, treesitter_query),
             Commands::Quotes(Basics {
                 search_paths,
                 treesitter_query,
-            }) => (&search_paths, &treesitter_query),
+            }) => (search_paths, treesitter_query),
             Commands::Rg(Ripgrep {
                 search_paths,
                 treesitter_query,
                 ..
-            }) => (&search_paths, &treesitter_query),
+            }) => (search_paths, treesitter_query),
         }
     }
 }

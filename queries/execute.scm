@@ -5,5 +5,5 @@
   (argument_list
     (string
       (string_start) @ss
-      (string_content) @sql
+      ; (string_content) @sql this splits the string
       (string_end) @se)))
