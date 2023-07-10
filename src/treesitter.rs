@@ -1,33 +1,74 @@
+use std::fmt::Display;
+use std::ops::Range;
+
 use anyhow::anyhow;
-use tree_sitter::{Parser, Query, QueryCursor};
+use tree_sitter::{Parser, Point, Query, QueryCursor};
 use tree_sitter_python::language as Python;
 
 use crate::error_exit;
 
 type SourceCode<'a> = &'a str;
 
-const SQL_CAPTURE: &str = "sql";
-const STRING_START: &str = "ss";
-const STRING_END: &str = "se";
-const MANDATORY_CAPTURE_GROUPS: &[&'static str; 3] = &[SQL_CAPTURE, STRING_START, STRING_END];
+#[derive(Debug, PartialEq, Clone, Copy)]
+enum CaptureGroup {
+    Sql,
+    StringStart,
+    StringEnd,
+    Other,
+}
 
-fn check_capture_groups(capture_names: &[String]) -> Option<&'static str> {
+impl From<&str> for CaptureGroup {
+    fn from(value: &str) -> Self {
+        match value {
+            "sql" => Self::Sql,
+            "ss" => Self::StringStart,
+            "se" => Self::StringEnd,
+            _ => Self::Other,
+        }
+    }
+}
+
+impl Display for CaptureGroup {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CaptureGroup::Sql => f.write_str("sql"),
+            CaptureGroup::StringStart => f.write_str("ss"),
+            CaptureGroup::StringEnd => f.write_str("se"),
+            CaptureGroup::Other => f.write_str("other"),
+        }
+    }
+}
+
+const MANDATORY_CAPTURE_GROUPS: &[CaptureGroup] = &[
+    // CaptureGroup::Sql,
+    CaptureGroup::StringStart,
+    CaptureGroup::StringEnd,
+];
+
+fn check_capture_groups(capture_names: &[CaptureGroup]) -> Option<CaptureGroup> {
     for &capture_group in MANDATORY_CAPTURE_GROUPS {
-        if !capture_names.iter().any(|name| name == capture_group) {
+        if !capture_names.contains(&capture_group) {
             return Some(capture_group);
         }
     }
     None
 }
 
+#[derive(Debug, Clone)]
+pub struct SqlBlock {
+    pub byte_range: Range<usize>,
+    pub start: Point,
+    pub end: Point,
+}
+
 pub struct Treesitter {
     parser: Parser,
     query: Query,
-    capture_names: Vec<String>,
+    capture_groups: Vec<CaptureGroup>,
 }
 
 impl Treesitter {
-    pub fn matching_node(&mut self, code: SourceCode) -> () {
+    pub fn sql_blocks(&mut self, code: SourceCode) -> Vec<SqlBlock> {
         let tree = self
             .parser
             .parse(code, None)
@@ -36,13 +77,36 @@ impl Treesitter {
         let mut cursor = QueryCursor::new();
         let matches = cursor.matches(&self.query, tree.root_node(), code.as_bytes());
 
-        for match_ in matches {
-            for capture in match_.captures {
-                if self.capture_names[capture.index as usize] == SQL_CAPTURE {
-                    todo!()
-                }
-            }
+        let mut sql_blocks = Vec::new();
+        for m in matches {
+            let mut start_byte = 0;
+            let mut end_byte = 0;
+            let mut start_point = Default::default();
+            let mut end_point = Default::default();
+
+            m.captures
+                .iter()
+                .map(|&cap| (cap, &self.capture_groups[cap.index as usize]))
+                .filter(|(_cap, grp)| MANDATORY_CAPTURE_GROUPS.contains(grp))
+                .for_each(|(cap, grp)| match grp {
+                    CaptureGroup::StringStart => {
+                        start_byte = cap.node.end_byte();
+                        start_point = cap.node.start_position();
+                    }
+                    CaptureGroup::StringEnd => {
+                        end_byte = cap.node.start_byte();
+                        end_point = cap.node.end_position();
+                    }
+                    _ => {}
+                });
+
+            sql_blocks.push(SqlBlock {
+                byte_range: start_byte..end_byte,
+                start: start_point,
+                end: end_point,
+            });
         }
+        sql_blocks
     }
 }
 
@@ -54,9 +118,15 @@ impl TryFrom<String> for Treesitter {
         parser
             .set_language(Python())
             .map_err(|_| anyhow!("Failed to set up Python tree-sitter parser"))?;
+
         let query = Query::new(Python(), &query)
             .map_err(|_| anyhow!("Failed to create tree-sitter query. Verify query syntax."))?;
-        let capture_names: Vec<String> = query.capture_names().iter().cloned().collect();
+
+        let capture_names: Vec<CaptureGroup> = query
+            .capture_names()
+            .iter()
+            .map(|name| CaptureGroup::from(name.as_str())) // name: &String
+            .collect();
 
         if let Some(missing) = check_capture_groups(&capture_names) {
             return Err(anyhow!(
@@ -68,10 +138,61 @@ impl TryFrom<String> for Treesitter {
         Ok(Self {
             parser,
             query,
-            capture_names,
+            capture_groups: capture_names,
         })
     }
 }
 
+#[cfg(test)]
+mod test {
+    use super::*;
 
+    const QUERY: &str = include_str!("../queries/execute.scm");
 
+    fn get_ts(query: &str) -> Treesitter {
+        Treesitter::try_from(query.to_string()).unwrap()
+    }
+
+    #[test]
+    fn from_string() {
+        let _ = Treesitter::try_from(QUERY.to_string()).unwrap();
+    }
+
+    #[test]
+    fn matching_node_ranges() {
+        let code = r#"
+crs.execute('SELECT 1 FROM foo')
+crs.execute(f'SELECT 2 FROM foo WHERE x = {x}')
+crs.execute("SELECT 3 FROM bar")
+crs.execute(f"SELECT 4 FROM foo WHERE x = {x}")
+crs.execute(f"""
+    SELECT 5 FROM foo
+""")
+
+crs.execute(f"""
+    SELECT 6 FROM foo where x = {x} AND y = {y}
+""")
+"#;
+
+        let expect = [
+            "SELECT 1 FROM foo",
+            "SELECT 2 FROM foo WHERE x = {x}",
+            "SELECT 3 FROM bar",
+            "SELECT 4 FROM foo WHERE x = {x}",
+            "\n    SELECT 5 FROM foo\n",
+            "\n    SELECT 6 FROM foo where x = {x} AND y = {y}\n",
+        ];
+
+        // println!("{code}\n");
+
+        // let mut code = String::from(code);
+        let mut ts = get_ts(QUERY);
+
+        let blocks = ts.sql_blocks(code);
+
+        for (idx, &sql) in expect.iter().enumerate() {
+            let snippet = &code[blocks[idx].clone().byte_range];
+            assert_eq!(sql, snippet);
+        }
+    }
+}
