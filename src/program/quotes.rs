@@ -24,18 +24,22 @@ impl Program for Quotes {
 
     fn run(&mut self) {
         for (mut code, path) in iter_valid_files(&self.search_paths) {
+            let mut change_count = 0;
             for block in self.treesitter.sql_blocks(&code).iter().rev() {
-                replace_quotes(&mut code, block);
+                if replace_quotes(&mut code, block) {
+                    change_count += 1;
+                }
             }
 
             if let Err(_) = write_file(path, code.as_bytes()) {
                 eprintln!("Failed to write to path: {}", path.display());
             }
+            println!("{change_count} changes made to {}", path.display());
         }
     }
 }
 
-fn replace_quotes(code: &mut String, block: &SqlBlock) {
+fn replace_quotes(code: &mut String, block: &SqlBlock) -> bool {
     let mut start = block.string_start.byte_range.clone();
     let end = block.string_end.byte_range.clone();
 
@@ -43,8 +47,13 @@ fn replace_quotes(code: &mut String, block: &SqlBlock) {
         start = start.start + 1..start.end;
     }
 
+    if &code[start.start..start.end] == TRIPLE_QUOTES {
+        return false;
+    }
+
     code.replace_range(end, TRIPLE_QUOTES);
     code.replace_range(start, TRIPLE_QUOTES);
+    return true;
 }
 
 fn is_f_string(code: &str) -> bool {
