@@ -6,7 +6,7 @@ use crate::utils::*;
 
 use super::Program;
 
-const TRIPLE_QUOTES: &str = r#"""""#;
+const TRIPLE_QUOTES: &str = "\"\"\"";
 
 pub(crate) struct Quotes {
     treesitter: TS,
@@ -31,7 +31,7 @@ impl Program for Quotes {
                 }
             }
 
-            if let Err(_) = write_file(path, code.as_bytes()) {
+            if write_file(path, code.as_bytes()).is_err() {
                 eprintln!("Failed to write to path: {}", path.display());
             }
             println!("{change_count} changes made to {}", path.display());
@@ -53,7 +53,7 @@ fn replace_quotes(code: &mut String, block: &SqlBlock) -> bool {
 
     code.replace_range(end, TRIPLE_QUOTES);
     code.replace_range(start, TRIPLE_QUOTES);
-    return true;
+    true
 }
 
 fn is_f_string(code: &str) -> bool {
