@@ -46,7 +46,10 @@ const MANDATORY_CAPTURE_GROUPS: &[CaptureGroup] = &[
 ];
 
 fn check_capture_groups(capture_names: &[CaptureGroup]) -> Option<CaptureGroup> {
-    MANDATORY_CAPTURE_GROUPS.iter().find(|&&capture_group| !capture_names.contains(&capture_group)).copied()
+    MANDATORY_CAPTURE_GROUPS
+        .iter()
+        .find(|&&capture_group| !capture_names.contains(&capture_group))
+        .copied()
 }
 
 #[derive(Debug, Clone, Default)]

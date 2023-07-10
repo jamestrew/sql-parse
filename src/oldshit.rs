@@ -9,11 +9,7 @@ struct FileMatches {
 impl From<&str> for FileMatches {
     fn from(value: &str) -> Self {
         let heading = value.lines().next().unwrap().trim();
-        let matches = value
-            .lines()
-            .skip(1)
-            .map(Match::from)
-            .collect();
+        let matches = value.lines().skip(1).map(Match::from).collect();
 
         Self {
             path: PathBuf::from(heading),
@@ -68,4 +64,3 @@ mod test {
         assert_eq!(fm.matches.len(), 5);
     }
 }
-

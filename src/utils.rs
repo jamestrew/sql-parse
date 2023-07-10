@@ -20,17 +20,20 @@ pub(crate) fn is_python_file(path: &Path) -> bool {
 pub(crate) fn iter_valid_files(paths: &[PathBuf]) -> impl Iterator<Item = (String, &PathBuf)> {
     paths.iter().filter_map(|path| {
         if !path.exists() {
-            eprintln!("Path doesn't exist: {:?} -- skipping", path);
+            eprintln!("Path doesn't exist: {} -- skipping", path.display());
             return None;
         }
         if !is_python_file(path) {
-            eprintln!("Non Python files unsupported: {:?} -- skipping", path);
+            eprintln!(
+                "Non Python files unsupported: {} -- skipping",
+                path.display()
+            );
             return None;
         }
         match std::fs::read_to_string(path) {
             Ok(code) => Some((code, path)),
             Err(_) => {
-                eprintln!("Failed to read file: {:?} -- skipping", path);
+                eprintln!("Failed to read file: {} -- skipping", path.display());
                 None
             }
         }
