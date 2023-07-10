@@ -1,4 +1,9 @@
-use std::path::{Path, PathBuf};
+use crate::cli::Cli;
+use crate::treesitter::Treesitter;
+use std::{
+    io::BufRead,
+    path::{Path, PathBuf},
+};
 
 #[macro_export]
 macro_rules! error_exit {
@@ -6,6 +11,41 @@ macro_rules! error_exit {
         eprintln!("ERROR: {}", format_args!($($arg)*));
         std::process::exit(1);
     }};
+}
+
+pub(crate) fn get_search_path(search_paths: &Vec<PathBuf>) -> Vec<PathBuf> {
+    if atty::is(atty::Stream::Stdin) && search_paths.is_empty() {
+        Cli::missing_paths_error();
+    }
+
+    if search_paths.is_empty() {
+        let stdin = std::io::stdin();
+        stdin
+            .lock()
+            .lines()
+            .map(|line| {
+                if let Ok(line) = line {
+                    PathBuf::from(&line)
+                } else {
+                    error_exit!("Failed to read stdin line")
+                }
+            })
+            .collect::<Vec<_>>()
+    } else {
+        search_paths.to_owned()
+    }
+}
+
+pub(crate) fn basic_cli_options(cli: Cli) -> (Treesitter, Vec<PathBuf>) {
+    let (search_path, ts_file) = cli.command.basics();
+    let ts_query = std::fs::read_to_string(ts_file).unwrap_or_else(|_| {
+        error_exit!("Failed to read provided regexp file: {}", ts_file.display())
+    });
+    let treesitter = Treesitter::try_from(ts_query).unwrap_or_else(|err| {
+        error_exit!("{}", err);
+    });
+
+    (treesitter, get_search_path(search_path))
 }
 
 pub(crate) fn is_python_file(path: &Path) -> bool {

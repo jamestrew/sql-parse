@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use crate::cli::Cli;
 use crate::treesitter::Treesitter as TS;
-use crate::utils::iter_valid_files;
+use crate::utils::*;
 
 use super::Program;
 
@@ -11,11 +11,9 @@ pub(crate) struct Treesitter {
     search_paths: Vec<PathBuf>,
 }
 
-impl Treesitter {}
-
 impl Program for Treesitter {
     fn new(cli: Cli) -> Self {
-        let (treesitter, search_paths) = Self::basic_cli_options(cli);
+        let (treesitter, search_paths) = basic_cli_options(cli);
         Self {
             treesitter,
             search_paths,

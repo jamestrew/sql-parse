@@ -1,6 +1,6 @@
 use clap::Parser;
 use sql_parse::cli::Cli;
-use sql_parse::program::{new_program, Program};
+use sql_parse::program::new_program;
 
 fn main() {
     let args = Cli::parse();
