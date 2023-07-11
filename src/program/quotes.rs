@@ -15,7 +15,7 @@ pub(crate) struct Quotes {
 
 impl Program for Quotes {
     fn new(cli: Cli) -> Self {
-        let (treesitter, search_paths) = basic_cli_options(cli);
+        let (treesitter, search_paths) = basic_cli_options(&cli);
         Self {
             treesitter,
             search_paths,

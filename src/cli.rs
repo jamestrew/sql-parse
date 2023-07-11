@@ -66,7 +66,7 @@ pub struct Ripgrep {
     pub treesitter_query: PathBuf,
 
     #[command(flatten)]
-    pub regepx: RegexpOption,
+    pub regexp: RegexpOption,
 
     ///// Set regexp search to be case insensitive. Default: false.
     // #[arg(short = 'i', long, default_value_t = false)]
@@ -76,7 +76,7 @@ pub struct Ripgrep {
 }
 
 #[derive(Debug, Args)]
-#[group(required = false, multiple = false)]
+#[group(required = true, multiple = false)]
 pub struct RegexpOption {
     /// Regexp pattern
     #[arg(
@@ -90,6 +90,15 @@ pub struct RegexpOption {
     /// Regexp pattern as a file
     #[arg(short = 'E', long, value_name = "FILE", conflicts_with = "regexp")]
     pub regexp_file: Option<PathBuf>,
+}
+
+impl From<Commands> for RegexpOption {
+    fn from(value: Commands) -> Self {
+        match value {
+            Commands::Rg(rg) => rg.regexp,
+            _ => unreachable!("can't get RegexpOption from non-rg commands"),
+        }
+    }
 }
 
 // impl From<&RegexpOption> for Regex {

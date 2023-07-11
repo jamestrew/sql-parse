@@ -36,7 +36,7 @@ pub(crate) fn get_search_path(search_paths: &Vec<PathBuf>) -> Vec<PathBuf> {
     }
 }
 
-pub(crate) fn basic_cli_options(cli: Cli) -> (Treesitter, Vec<PathBuf>) {
+pub(crate) fn basic_cli_options(cli: &Cli) -> (Treesitter, Vec<PathBuf>) {
     let (search_path, ts_file) = cli.command.basics();
     let ts_query = std::fs::read_to_string(ts_file).unwrap_or_else(|_| {
         error_exit!("Failed to read provided regexp file: {}", ts_file.display())

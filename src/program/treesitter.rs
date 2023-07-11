@@ -13,7 +13,7 @@ pub(crate) struct Treesitter {
 
 impl Program for Treesitter {
     fn new(cli: Cli) -> Self {
-        let (treesitter, search_paths) = basic_cli_options(cli);
+        let (treesitter, search_paths) = basic_cli_options(&cli);
         Self {
             treesitter,
             search_paths,
