@@ -62,10 +62,11 @@ impl Rg {
 impl Program for Rg {
     fn new(cli: Cli) -> Self {
         let (treesitter, search_paths) = basic_cli_options(&cli);
+        let rg_opts: Ripgrep = cli.command.into();
         Self {
             treesitter,
             search_paths,
-            regex: Self::get_regex(cli.command.into()),
+            regex: Self::get_regex(rg_opts.regexp),
         }
     }
 
@@ -76,5 +77,59 @@ impl Program for Rg {
                 self.pipe_to_rg(sql);
             }
         }
+    }
+}
+
+fn rg_args(opts: &Ripgrep) -> Vec<String> {
+    let mut args = Vec::with_capacity(4);
+    if opts.ignore_case {
+        args.push(String::from("-i"));
+    }
+    if opts.invert_matching {
+        args.push(String::from("-v"))
+    }
+    if opts.multiline {
+        args.push(String::from("-U"))
+    }
+    if let Some(replacement) = &opts.replace {
+        args.push(format!("-r={}", replacement).to_string());
+    }
+
+    args
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    fn make_rg(i: bool, v: bool, u: bool, r: Option<String>) -> Ripgrep {
+        Ripgrep {
+            treesitter_query: PathBuf::from("foo.md"),
+            regexp: RegexpOption {
+                regexp: Some(String::from("hello")),
+                regexp_file: None,
+            },
+            search_paths: Vec::new(),
+            ignore_case: i,
+            invert_matching: v,
+            multiline: u,
+            replace: r,
+        }
+    }
+
+    #[test]
+    fn default_rg_args() {
+        let opts = make_rg(false, false, false, None);
+        let opts = rg_args(&opts);
+        assert_eq!(opts.len(), 0);
+    }
+
+    #[test]
+    fn rg_args_all_on() {
+        let opts = make_rg(true, true, true, Some(String::from("potato")));
+        let opts = rg_args(&opts);
+        assert_eq!(opts.len(), 4);
+
+        assert_eq!(opts, vec!["-i", "-v", "-U", "-r=potato"])
     }
 }

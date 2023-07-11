@@ -68,11 +68,33 @@ pub struct Ripgrep {
     #[command(flatten)]
     pub regexp: RegexpOption,
 
-    ///// Set regexp search to be case insensitive. Default: false.
-    // #[arg(short = 'i', long, default_value_t = false)]
-    // ignore_case: bool,
     /// Files to search through
     pub search_paths: Vec<PathBuf>,
+
+    /// Set regexp search to be case insensitive.
+    #[arg(short = 'i', long, default_value_t = false)]
+    pub ignore_case: bool,
+
+    /// Invert matching.
+    #[arg(short = 'v', long, default_value_t = false)]
+    pub invert_matching: bool,
+
+    /// Enable matching across multiple lines.
+    #[arg(short = 'U', long, default_value_t = false)]
+    pub multiline: bool,
+
+    /// Replace every match with the text given when printing results. See `man rg`.
+    #[arg(short, long, value_name = "REPLACEMENT_TEXT")]
+    pub replace: Option<String>,
+}
+
+impl From<Commands> for Ripgrep {
+    fn from(value: Commands) -> Self {
+        match value {
+            Commands::Rg(rg) => rg,
+            _ => unreachable!("can't get RegexpOption from non-rg commands"),
+        }
+    }
 }
 
 #[derive(Debug, Args)]
@@ -88,32 +110,6 @@ pub struct RegexpOption {
     pub regexp: Option<String>,
 
     /// Regexp pattern as a file
-    #[arg(short = 'E', long, value_name = "FILE", conflicts_with = "regexp")]
+    #[arg(long, value_name = "FILE", conflicts_with = "regexp")]
     pub regexp_file: Option<PathBuf>,
 }
-
-impl From<Commands> for RegexpOption {
-    fn from(value: Commands) -> Self {
-        match value {
-            Commands::Rg(rg) => rg.regexp,
-            _ => unreachable!("can't get RegexpOption from non-rg commands"),
-        }
-    }
-}
-
-// impl From<&RegexpOption> for Regex {
-//     fn from(value: &RegexpOption) -> Self {
-//         if let Some(pattern) = &value.regexp {
-//             Self::new(pattern)
-//                 .unwrap_or_else(|_| error_exit!("Invalid regexp expression: {}", pattern))
-//         } else if let Some(file_path) = &value.regexp_file {
-//             let pattern = std::fs::read_to_string(file_path).unwrap_or_else(|_| {
-//                 error_exit!("Failed to read provided regexp file: {:?}", file_path)
-//             });
-//             Self::new(&pattern)
-//                 .unwrap_or_else(|_| error_exit!("Invalid regexp expression: {}", pattern))
-//         } else {
-//             unreachable!()
-//         }
-//     }
-// }
