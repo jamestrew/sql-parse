@@ -2,7 +2,7 @@ use std::io::Read;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
-use crate::cli::{Cli, RegexpOption};
+use crate::cli::{Cli, Ripgrep};
 use crate::error_exit;
 use crate::treesitter::Treesitter as TS;
 use crate::utils::*;
@@ -12,20 +12,20 @@ use super::Program;
 pub(super) struct Rg {
     treesitter: TS,
     search_paths: Vec<PathBuf>,
-    regex: String,
+    rg_opts: Ripgrep,
 }
 
 impl Rg {
-    fn get_regex(value: RegexpOption) -> String {
-        if let Some(pattern) = value.regexp {
+    fn get_regex(&self) -> String {
+        if let Some(pattern) = self.rg_opts.regexp.regexp.clone() {
             pattern
-        } else if let Some(file_path) = &value.regexp_file {
-            let pattern = std::fs::read_to_string(file_path).unwrap_or_else(|_| {
+        } else if let Some(file_path) = self.rg_opts.regexp.regexp_file.clone() {
+            let pattern = std::fs::read_to_string(&file_path).unwrap_or_else(|_| {
                 error_exit!("Failed to read provided regexp file: {:?}", file_path)
             });
             pattern
         } else {
-            unreachable!("invalid rg option {:?}", value)
+            unreachable!("invalid rg option {:?}", self.rg_opts.regexp)
         }
     }
 
@@ -34,39 +34,44 @@ impl Rg {
             .arg(code)
             .stdout(Stdio::piped())
             .spawn()
-            .unwrap();
+            .expect("failed to spawn 'echo' command");
 
         let rg_child = Command::new("rg")
             .arg("--line-number")
             .arg("--column")
             .arg("--color=never")
             .arg("--engine=auto")
-            .arg(&self.regex)
-            .stdin(Stdio::from(echo_child.stdout.unwrap()))
+            .args(&rg_args(&self.rg_opts))
+            .arg(self.get_regex())
+            .stdin(Stdio::from(
+                echo_child.stdout.expect("failed to pipe text to rg"),
+            ))
             .stdout(Stdio::piped())
             .spawn()
-            .unwrap();
+            .expect("failed to spawn 'rg' command");
 
         let mut output = String::new();
         rg_child
             .stdout
             .unwrap()
             .read_to_string(&mut output)
-            .unwrap();
+            .expect("failed to read rg command output to string");
 
-        println!("{}", output);
         output
     }
 }
 
 impl Program for Rg {
     fn new(cli: Cli) -> Self {
+        check_program_available("rg");
+        check_program_available("echo");
+
         let (treesitter, search_paths) = basic_cli_options(&cli);
         let rg_opts: Ripgrep = cli.command.into();
         Self {
             treesitter,
             search_paths,
-            regex: Self::get_regex(rg_opts.regexp),
+            rg_opts,
         }
     }
 
@@ -77,6 +82,17 @@ impl Program for Rg {
                 self.pipe_to_rg(sql);
             }
         }
+    }
+}
+
+fn check_program_available(program: &str) {
+    let output = Command::new("which")
+        .arg(program)
+        .output()
+        .expect("failed to execute 'which' command");
+
+    if !output.status.success() {
+        error_exit!("{} not available. Required dependency.", program);
     }
 }
 
@@ -101,6 +117,7 @@ fn rg_args(opts: &Ripgrep) -> Vec<String> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::cli::RegexpOption;
 
     fn make_rg(i: bool, v: bool, u: bool, r: Option<String>) -> Ripgrep {
         Ripgrep {
