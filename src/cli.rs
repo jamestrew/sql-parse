@@ -25,8 +25,8 @@ pub enum Commands {
     /// Convert all SQL strings matched by tree-sitter in `"""` quotes
     Quotes(Basics),
 
-    /// Pipe tree-sitter matched nodes to ripgrep
-    Rg(Ripgrep),
+    /// Pipe tree-sitter matched nodes to regex pattern matching
+    Regexp(RegexpOptions),
 }
 
 impl Commands {
@@ -40,7 +40,7 @@ impl Commands {
                 search_paths,
                 treesitter_query,
             }) => (search_paths, treesitter_query),
-            Commands::Rg(Ripgrep {
+            Commands::Regexp(RegexpOptions {
                 search_paths,
                 treesitter_query,
                 ..
@@ -60,13 +60,13 @@ pub struct Basics {
 }
 
 #[derive(Args)]
-pub struct Ripgrep {
+pub struct RegexpOptions {
     /// Path for treesitter query file
     #[arg(short, long, value_name = "FILE")]
     pub treesitter_query: PathBuf,
 
     #[command(flatten)]
-    pub regexp: RegexpOption,
+    pub regexp: RegexpPattern,
 
     /// Files to search through
     pub search_paths: Vec<PathBuf>,
@@ -76,22 +76,22 @@ pub struct Ripgrep {
     pub ignore_case: bool,
 
     /// Invert matching.
-    #[arg(short = 'v', long, default_value_t = false)]
-    pub invert_matching: bool,
+    #[arg(short = 'v', long, default_value_t = false, conflicts_with = "replace")]
+    pub invert_match: bool,
 
     /// Enable matching across multiple lines.
     #[arg(short = 'U', long, default_value_t = false)]
     pub multiline: bool,
 
-    /// Replace every match with the text given when printing results. See `man rg`.
-    #[arg(short, long, value_name = "REPLACEMENT_TEXT")]
+    /// Replace every match with the text given when printing results.
+    #[arg(short, long, value_name = "REPLACEMENT_TEXT", conflicts_with = "invert_match")]
     pub replace: Option<String>,
 }
 
-impl From<Commands> for Ripgrep {
+impl From<Commands> for RegexpOptions {
     fn from(value: Commands) -> Self {
         match value {
-            Commands::Rg(rg) => rg,
+            Commands::Regexp(rg) => rg,
             _ => unreachable!("can't get RegexpOption from non-rg commands"),
         }
     }
@@ -99,7 +99,7 @@ impl From<Commands> for Ripgrep {
 
 #[derive(Debug, Args)]
 #[group(required = true, multiple = false)]
-pub struct RegexpOption {
+pub struct RegexpPattern {
     /// Regexp pattern
     #[arg(
         short = 'e',

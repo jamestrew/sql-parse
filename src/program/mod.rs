@@ -4,9 +4,9 @@ mod rg;
 
 
 use crate::cli::{Cli, Commands};
-use crate::program::quotes::Quotes;
-use crate::program::treesitter::Treesitter;
-use crate::program::rg::Rg;
+use quotes::Quotes;
+use treesitter::Treesitter;
+use rg::Rg;
 
 pub trait Program {
     fn new(cli: Cli) -> Self
@@ -20,6 +20,6 @@ pub fn new_program(cli: Cli) -> Box<dyn Program> {
     match cli.command {
         Commands::TS(_) => Box::new(Treesitter::new(cli)),
         Commands::Quotes(_) => Box::new(Quotes::new(cli)),
-        Commands::Rg(_) => Box::new(Rg::new(cli)),
+        Commands::Regexp(_) => Box::new(Rg::new(cli)),
     }
 }
