@@ -1,9 +1,9 @@
-use crate::cli::Cli;
-use crate::treesitter::Treesitter;
 use std::{
     io::BufRead,
     path::{Path, PathBuf},
 };
+
+use crate::{cli::Cli, treesitter::Treesitter};
 
 #[macro_export]
 macro_rules! error_exit {

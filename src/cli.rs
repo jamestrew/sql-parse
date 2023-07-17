@@ -84,7 +84,12 @@ pub struct RegexpOptions {
     pub multiline: bool,
 
     /// Replace every match with the text given when printing results.
-    #[arg(short, long, value_name = "REPLACEMENT_TEXT", conflicts_with = "invert_match")]
+    #[arg(
+        short,
+        long,
+        value_name = "REPLACEMENT_TEXT",
+        conflicts_with = "invert_match"
+    )]
     pub replace: Option<String>,
 }
 
@@ -101,12 +106,7 @@ impl From<Commands> for RegexpOptions {
 #[group(required = true, multiple = false)]
 pub struct RegexpPattern {
     /// Regexp pattern
-    #[arg(
-        short = 'e',
-        long,
-        value_name = "PATTERN",
-        conflicts_with = "regexp_file"
-    )]
+    #[arg(value_name = "PATTERN", conflicts_with = "regexp_file")]
     pub regexp: Option<String>,
 
     /// Regexp pattern as a file

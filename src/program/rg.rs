@@ -70,9 +70,9 @@ impl Program for Rg {
                     todo!("handle replace text")
                 }
 
-                let lines = block_lines(&sql);
+                let lines = block_lines(sql);
                 self.re
-                    .find_iter(&sql)
+                    .find_iter(sql)
                     .map(|m| MatchRange::from_regex_match(&block, &m, &lines))
                     .for_each(|mr| {
                         println!(

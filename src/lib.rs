@@ -4,9 +4,12 @@ pub mod program;
 mod treesitter;
 pub mod utils;
 
-use std::io;
-use std::path::PathBuf;
-use std::process::{Command, Stdio};
+use std::{
+    io,
+    path::PathBuf,
+    process::{Command, Stdio},
+};
+
 use tree_sitter::{Parser, Query, QueryCursor};
 
 #[allow(dead_code)]

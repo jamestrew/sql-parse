@@ -1,12 +1,12 @@
 mod quotes;
-mod treesitter;
 mod rg;
+mod treesitter;
 
+use quotes::Quotes;
+use rg::Rg;
+use treesitter::Treesitter;
 
 use crate::cli::{Cli, Commands};
-use quotes::Quotes;
-use treesitter::Treesitter;
-use rg::Rg;
 
 pub trait Program {
     fn new(cli: Cli) -> Self

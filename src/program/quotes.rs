@@ -1,10 +1,11 @@
 use std::path::PathBuf;
 
-use crate::cli::Cli;
-use crate::treesitter::{SqlBlock, Treesitter as TS};
-use crate::utils::*;
-
 use super::Program;
+use crate::{
+    cli::Cli,
+    treesitter::{SqlBlock, Treesitter as TS},
+    utils::*,
+};
 
 const TRIPLE_QUOTES: &str = "\"\"\"";
 
