@@ -1,5 +1,4 @@
-use std::fmt::Display;
-use std::ops::Range;
+use std::{fmt::Display, ops::Range};
 
 use anyhow::anyhow;
 use tree_sitter::{Parser, Point, Query, QueryCursor};
@@ -75,6 +74,11 @@ impl SqlBlock {
 
     pub fn start_line_num(&self) -> usize {
         self.string_start.point.row + 1
+    }
+
+    pub fn inner_text_start_column(&self) -> usize {
+        self.string_start.point.column
+            + (self.string_start.byte_range.end - self.string_start.byte_range.start)
     }
 }
 

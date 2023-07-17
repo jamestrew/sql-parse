@@ -1,23 +1,26 @@
-use std::path::PathBuf;
+use std::{ops::Range, path::PathBuf};
 
-use regex::{Regex, RegexBuilder};
-
-use crate::cli::{Cli, RegexpOptions};
-use crate::error_exit;
-use crate::treesitter::{SqlBlock, Treesitter as TS};
-use crate::utils::*;
+use regex::{Match, Regex, RegexBuilder};
+use tree_sitter::Point;
 
 use super::Program;
+use crate::{
+    cli::{Cli, RegexpOptions},
+    error_exit,
+    treesitter::{SqlBlock, Treesitter},
+    utils::*,
+};
 
 pub(super) struct Rg {
-    treesitter: TS,
+    treesitter: Treesitter,
     search_paths: Vec<PathBuf>,
-    regexp: Regex,
+    re: Regex,
     invert_match: bool,
+    replace_text: Option<String>,
 }
 
 impl Rg {
-    fn get_regex(rg_opts: &RegexpOptions) -> Regex {
+    fn make_regex(rg_opts: &RegexpOptions) -> Regex {
         let mut regex = if let Some(pattern) = rg_opts.regexp.regexp.clone() {
             RegexBuilder::new(&pattern)
         } else if let Some(file_path) = rg_opts.regexp.regexp_file.clone() {
@@ -38,7 +41,7 @@ impl Rg {
 
         regex
             .build()
-            .unwrap_or_else(|_| error_exit!("Failed to build regex"))
+            .unwrap_or_else(|err| error_exit!("Failed to build regex:\n{}", err))
     }
 }
 
@@ -50,8 +53,9 @@ impl Program for Rg {
         Self {
             treesitter,
             search_paths,
-            regexp: Rg::get_regex(&rg_opts),
+            re: Rg::make_regex(&rg_opts),
             invert_match: rg_opts.invert_match,
+            replace_text: rg_opts.replace,
         }
     }
 
@@ -59,19 +63,88 @@ impl Program for Rg {
         for (code, _path) in iter_valid_files(&self.search_paths) {
             for block in self.treesitter.sql_blocks(&code) {
                 let sql = block.inner_text(&code);
-                // let output = self.pipe_to_rg(sql);
-                // print_output(&output, &code, &block);
+                if self.invert_match {
+                    todo!("handle invert match")
+                }
+                if self.replace_text.is_some() {
+                    todo!("handle replace text")
+                }
+
+                let lines = block_lines(&sql);
+                self.re
+                    .find_iter(&sql)
+                    .map(|m| MatchRange::from_regex_match(&block, &m, &lines))
+                    .for_each(|mr| {
+                        println!(
+                            "{}:{}:{}",
+                            mr.start_point.row + 1,
+                            mr.start_point.column + 1,
+                            &code[mr.line_range]
+                        )
+                    });
             }
         }
     }
 }
 
-fn print_output(rg_output: &str, code: &str, block_info: &SqlBlock) {
-    // loop lines
-    // split rg output by `:`
-    // get correct line and col(?) numbers
-    // prin
+#[derive(Debug, Clone, PartialEq, Default)]
+struct MatchRange {
+    match_range: Range<usize>,
+    start_point: Point,
+    line_range: Range<usize>,
+}
+
+impl MatchRange {
+    fn from_regex_match(ts_block: &SqlBlock, regex_match: &Match, lines: &[usize]) -> Self {
+        let start_byte = ts_block.string_start.byte_range.end + regex_match.start();
+        let end_byte = ts_block.string_start.byte_range.end + regex_match.end();
+
+        let row = lines
+            .iter()
+            .rposition(|&line_byte| line_byte < regex_match.start())
+            .unwrap_or(0);
+
+        let column = if row == 0 {
+            ts_block.inner_text_start_column()
+        } else {
+            regex_match.start() - lines[row]
+        };
+
+        let line_start = lines[row] + ts_block.string_start.byte_range.end;
+        let line_end = lines
+            .get(row + 1)
+            .map(|&x| ts_block.string_start.byte_range.end + x - 1)
+            .unwrap_or(ts_block.string_end.byte_range.start);
+
+        Self {
+            match_range: start_byte..end_byte,
+            start_point: Point {
+                row: row + ts_block.string_start.point.row,
+                column,
+            },
+            line_range: line_start..line_end,
+        }
+    }
+}
+
+fn block_lines(code: &str) -> Vec<usize> {
+    let mut lines = vec![0];
+    code.as_bytes()
+        .iter()
+        .enumerate()
+        .filter(|(_, &ch)| ch == b'\n')
+        .for_each(|(idx, _)| lines.push(idx + 1));
+    lines
 }
 
 #[cfg(test)]
-mod test {}
+mod test {
+    use crate::program::rg::block_lines;
+
+    #[test]
+    fn test_block_lines() {
+        let input = "hello\nworld";
+        let expected = vec![0, 6];
+        assert_eq!(block_lines(&input), expected);
+    }
+}
