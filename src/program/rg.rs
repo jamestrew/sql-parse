@@ -60,7 +60,8 @@ impl Program for Rg {
     }
 
     fn run(&mut self) {
-        for (code, _path) in iter_valid_files(&self.search_paths) {
+        for (code, path) in iter_valid_files(&self.search_paths) {
+            let path = path.as_path().to_str().unwrap();
             for block in self.treesitter.sql_blocks(&code) {
                 let sql = block.inner_text(&code);
                 if self.invert_match {
@@ -70,16 +71,16 @@ impl Program for Rg {
                     todo!("handle replace text")
                 }
 
-                let lines = block_lines(sql);
+                let lines = block_lines(&code);
                 self.re
                     .find_iter(sql)
-                    .map(|m| MatchRange::from_regex_match(&block, &m, &lines))
-                    .for_each(|mr| {
-                        println!(
-                            "{}:{}:{}",
-                            mr.start_point.row + 1,
-                            mr.start_point.column + 1,
-                            &code[mr.line_range]
+                    .map(|m| MatchRange::from_regex_match(&block, &m, &lines, &code))
+                    .for_each(|rng| {
+                        print(
+                            path,
+                            rng.start_point.row + 1,
+                            &code[rng.line_range],
+                            Some(rng.line_match_range),
                         )
                     });
             }
@@ -89,40 +90,49 @@ impl Program for Rg {
 
 #[derive(Debug, Clone, PartialEq, Default)]
 struct MatchRange {
-    match_range: Range<usize>,
+    abs_match_range: Range<usize>,
     start_point: Point,
     line_range: Range<usize>,
+    line_match_range: Range<usize>,
 }
 
 impl MatchRange {
-    fn from_regex_match(ts_block: &SqlBlock, regex_match: &Match, lines: &[usize]) -> Self {
+    fn from_regex_match(
+        ts_block: &SqlBlock,
+        regex_match: &Match,
+        lines: &[usize],
+        code: &str,
+    ) -> Self {
         let start_byte = ts_block.string_start.byte_range.end + regex_match.start();
         let end_byte = ts_block.string_start.byte_range.end + regex_match.end();
 
         let row = lines
             .iter()
-            .rposition(|&line_byte| line_byte < regex_match.start())
+            .rposition(|&line_byte| {
+                line_byte <= regex_match.start() + ts_block.string_start.byte_range.end
+            })
             .unwrap_or(0);
 
-        let column = if row == 0 {
-            ts_block.inner_text_start_column()
-        } else {
-            regex_match.start() - lines[row]
-        };
+        let line_start = lines[row];
+        let line_end = code[start_byte..]
+            .as_bytes()
+            .iter()
+            .position(|&byte| byte == b'\n')
+            .unwrap_or(0)
+            + start_byte;
+        let column = start_byte - line_start;
 
-        let line_start = lines[row] + ts_block.string_start.byte_range.end;
-        let line_end = lines
-            .get(row + 1)
-            .map(|&x| ts_block.string_start.byte_range.end + x - 1)
-            .unwrap_or(ts_block.string_end.byte_range.start);
+        // println!("{:?}", lines);
+        // println!(
+        //     "rg: {:?}, row: {row}, col: {column}, line_start: {line_start}, line_end: {line_end}",
+        //     regex_match
+        // );
 
         Self {
-            match_range: start_byte..end_byte,
-            start_point: Point {
-                row: row + ts_block.string_start.point.row,
-                column,
-            },
+            abs_match_range: start_byte..end_byte,
+            start_point: Point { row, column },
             line_range: line_start..line_end,
+            line_match_range: column..(column + regex_match.end() - regex_match.start()),
         }
     }
 }
