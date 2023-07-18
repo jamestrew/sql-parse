@@ -123,12 +123,6 @@ impl MatchRange {
             + start_byte;
         let column = start_byte - line_start;
 
-        // println!("{:?}", lines);
-        // println!(
-        //     "rg: {:?}, row: {row}, col: {column}, line_start: {line_start}, line_end: {line_end}",
-        //     regex_match
-        // );
-
         Self {
             abs_match_range: start_byte..end_byte,
             start_point: Point { row, column },
@@ -156,6 +150,6 @@ mod test {
     fn test_block_lines() {
         let input = "hello\nworld";
         let expected = vec![0, 6];
-        assert_eq!(block_lines(&input), expected);
+        assert_eq!(block_lines(input), expected);
     }
 }
