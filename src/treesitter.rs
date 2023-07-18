@@ -138,7 +138,7 @@ impl TryFrom<String> for Treesitter {
         let capture_names: Vec<CaptureGroup> = query
             .capture_names()
             .iter()
-            .map(|name| CaptureGroup::from(name.as_str())) // name: &String
+            .map(|name| CaptureGroup::from(name.as_str()))
             .collect();
 
         if let Some(missing) = check_capture_groups(&capture_names) {

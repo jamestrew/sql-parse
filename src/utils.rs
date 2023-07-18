@@ -14,7 +14,7 @@ macro_rules! error_exit {
     }};
 }
 
-pub(crate) fn get_search_path(search_paths: &Vec<PathBuf>) -> Vec<PathBuf> {
+fn get_search_path(search_paths: &Vec<PathBuf>) -> Vec<PathBuf> {
     if atty::is(atty::Stream::Stdin) && search_paths.is_empty() {
         Cli::missing_paths_error();
     }
@@ -55,7 +55,7 @@ pub(crate) fn basic_cli_options(cli: &Cli) -> (Treesitter, Vec<PathBuf>) {
     (treesitter, get_search_path(search_path))
 }
 
-pub(crate) fn is_python_file(path: &Path) -> bool {
+fn is_python_file(path: &Path) -> bool {
     if let Some(ext) = path.extension() {
         if let Some(ext) = ext.to_str() {
             return ext.eq_ignore_ascii_case("py");
