@@ -1,5 +1,6 @@
 use std::{
     io::BufRead,
+    ops::Range,
     path::{Path, PathBuf},
 };
 
@@ -84,4 +85,40 @@ pub(crate) fn iter_valid_files(paths: &[PathBuf]) -> impl Iterator<Item = (Strin
             }
         }
     })
+}
+
+pub(crate) fn print(
+    path: &str,
+    lnum: usize,
+    col: Option<usize>,
+    text: &str,
+    match_rng: Option<Range<usize>>,
+) {
+    use ansi_term::Color::{Green, Purple, Red};
+
+    let content = if let Some(match_rng) = match_rng {
+        let match_text = &text[match_rng.clone()];
+        format!(
+            "{}{}{}",
+            &text[..match_rng.start],
+            Red.paint(match_text),
+            &text[match_rng.end..]
+        )
+    } else {
+        text.to_string()
+    };
+
+    let column = if let Some(col) = col {
+        format!(":{col}")
+    } else {
+        "".to_string()
+    };
+
+    println!(
+        "{}:{}{}:{}",
+        Purple.paint(path),
+        Green.paint(lnum.to_string()),
+        column,
+        content
+    );
 }

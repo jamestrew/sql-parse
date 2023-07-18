@@ -79,6 +79,7 @@ impl Program for Rg {
                         print(
                             path,
                             rng.start_point.row + 1,
+                            Some(rng.start_point.column + 1),
                             &code[rng.line_range],
                             Some(rng.line_match_range),
                         )

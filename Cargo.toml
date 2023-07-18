@@ -11,6 +11,7 @@ description = "Use the power of tree-sitter and ripgrep to parse some Python emb
 path = "src/lib.rs"
 
 [dependencies]
+ansi_term = "0.12.1"
 anyhow = "*"
 atty = "0.2.14"
 clap = { version = "4.3.11", features = ["derive"] }

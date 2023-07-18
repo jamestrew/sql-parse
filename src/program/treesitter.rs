@@ -19,12 +19,14 @@ impl Program for Treesitter {
 
     fn run(&mut self) {
         for (code, path) in iter_valid_files(&self.search_paths) {
+            let path = path.as_path().to_str().unwrap();
             for block in self.treesitter.sql_blocks(&code) {
-                println!(
-                    "{}:{}:{}",
-                    path.display(),
+                print(
+                    path,
                     block.start_line_num(),
-                    block.inner_text(&code)
+                    None,
+                    block.inner_text(&code),
+                    None,
                 );
             }
         }
