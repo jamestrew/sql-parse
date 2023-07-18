@@ -26,7 +26,7 @@ pub enum Commands {
     Quotes(Basics),
 
     /// Pipe tree-sitter matched nodes to regex pattern matching
-    Regexp(RegexpOptions),
+    Regex(RegexOptions),
 }
 
 impl Commands {
@@ -40,7 +40,7 @@ impl Commands {
                 search_paths,
                 treesitter_query,
             }) => (search_paths, treesitter_query),
-            Commands::Regexp(RegexpOptions {
+            Commands::Regex(RegexOptions {
                 search_paths,
                 treesitter_query,
                 ..
@@ -61,18 +61,18 @@ pub struct Basics {
 }
 
 #[derive(Args)]
-pub struct RegexpOptions {
+pub struct RegexOptions {
     /// Path for treesitter query file
     #[arg(short, long, value_name = "FILE")]
     pub treesitter_query: Option<PathBuf>,
 
     #[command(flatten)]
-    pub regexp: RegexpPattern,
+    pub regex: RegexPattern,
 
     /// Files to search through
     pub search_paths: Vec<PathBuf>,
 
-    /// Set regexp search to be case insensitive.
+    /// Set regex search to be case insensitive.
     #[arg(short = 'i', long, default_value_t = false)]
     pub ignore_case: bool,
 
@@ -94,23 +94,23 @@ pub struct RegexpOptions {
     pub replace: Option<String>,
 }
 
-impl From<Commands> for RegexpOptions {
+impl From<Commands> for RegexOptions {
     fn from(value: Commands) -> Self {
         match value {
-            Commands::Regexp(rg) => rg,
-            _ => unreachable!("can't get RegexpOption from non-rg commands"),
+            Commands::Regex(rg) => rg,
+            _ => unreachable!("can't get RegexOption from non-rg commands"),
         }
     }
 }
 
 #[derive(Debug, Args)]
 #[group(required = true, multiple = false)]
-pub struct RegexpPattern {
-    /// Regexp pattern
-    #[arg(value_name = "PATTERN", conflicts_with = "regexp_file")]
-    pub regexp: Option<String>,
+pub struct RegexPattern {
+    /// Regex pattern
+    #[arg(value_name = "PATTERN", conflicts_with = "regex_file")]
+    pub regex: Option<String>,
 
-    /// Regexp pattern as a file
-    #[arg(long, value_name = "FILE", conflicts_with = "regexp")]
-    pub regexp_file: Option<PathBuf>,
+    /// Regex pattern as a file
+    #[arg(long, value_name = "FILE", conflicts_with = "regex")]
+    pub regex_file: Option<PathBuf>,
 }

@@ -20,6 +20,6 @@ pub fn new_program(cli: Cli) -> Box<dyn Program> {
     match cli.command {
         Commands::TS(_) => Box::new(Treesitter::new(cli)),
         Commands::Quotes(_) => Box::new(Quotes::new(cli)),
-        Commands::Regexp(_) => Box::new(Rg::new(cli)),
+        Commands::Regex(_) => Box::new(Rg::new(cli)),
     }
 }

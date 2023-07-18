@@ -5,7 +5,7 @@ use tree_sitter::Point;
 
 use super::Program;
 use crate::{
-    cli::{Cli, RegexpOptions},
+    cli::{Cli, RegexOptions},
     error_exit,
     treesitter::{SqlBlock, Treesitter},
     utils::*,
@@ -20,16 +20,16 @@ pub(super) struct Rg {
 }
 
 impl Rg {
-    fn make_regex(rg_opts: &RegexpOptions) -> Regex {
-        let mut regex = if let Some(pattern) = rg_opts.regexp.regexp.clone() {
+    fn make_regex(rg_opts: &RegexOptions) -> Regex {
+        let mut regex = if let Some(pattern) = rg_opts.regex.regex.clone() {
             RegexBuilder::new(&pattern)
-        } else if let Some(file_path) = rg_opts.regexp.regexp_file.clone() {
+        } else if let Some(file_path) = rg_opts.regex.regex_file.clone() {
             let pattern = std::fs::read_to_string(&file_path).unwrap_or_else(|_| {
-                error_exit!("Failed to read provided regexp file: {:?}", file_path)
+                error_exit!("Failed to read provided regex file: {:?}", file_path)
             });
             RegexBuilder::new(&pattern)
         } else {
-            unreachable!("invalid rg option {:?}", rg_opts.regexp)
+            unreachable!("invalid rg option {:?}", rg_opts.regex)
         };
 
         if rg_opts.ignore_case {
@@ -48,7 +48,7 @@ impl Rg {
 impl Program for Rg {
     fn new(cli: Cli) -> Self {
         let (treesitter, search_paths) = basic_cli_options(&cli);
-        let rg_opts: RegexpOptions = cli.command.into();
+        let rg_opts: RegexOptions = cli.command.into();
 
         Self {
             treesitter,
