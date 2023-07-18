@@ -64,6 +64,7 @@ impl Program for Rg {
             let path = path.as_path().to_str().unwrap();
             for block in self.treesitter.sql_blocks(&code) {
                 let sql = block.inner_text(&code);
+                let lines = block_lines(&code);
                 if self.invert_match {
                     todo!("handle invert match")
                 }
@@ -71,7 +72,6 @@ impl Program for Rg {
                     todo!("handle replace text")
                 }
 
-                let lines = block_lines(&code);
                 self.re
                     .find_iter(sql)
                     .map(|m| MatchRange::from_regex_match(&block, &m, &lines, &code))
