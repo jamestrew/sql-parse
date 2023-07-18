@@ -65,14 +65,6 @@ fn is_f_string(code: &str) -> bool {
     }
 }
 
-fn write_file(path: &PathBuf, bytes: &[u8]) -> anyhow::Result<()> {
-    use std::io::Write;
-
-    let mut file = std::fs::File::create(path)?;
-    file.write_all(bytes)?;
-    Ok(())
-}
-
 #[cfg(test)]
 mod test {
     use super::*;

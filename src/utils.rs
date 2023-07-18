@@ -87,6 +87,17 @@ pub(crate) fn iter_valid_files(paths: &[PathBuf]) -> impl Iterator<Item = (Strin
     })
 }
 
+pub(crate) fn write_file<P>(path: &P, bytes: &[u8]) -> anyhow::Result<()>
+where
+    P: AsRef<Path>,
+{
+    use std::io::Write;
+
+    let mut file = std::fs::File::create(path)?;
+    file.write_all(bytes)?;
+    Ok(())
+}
+
 pub(crate) fn print(
     path: &str,
     lnum: usize,
