@@ -11,12 +11,29 @@ use crate::{
     utils::*,
 };
 
+struct FileState {
+    path: String,
+    lines: Vec<usize>,
+    code: String,
+}
+
+impl Default for FileState {
+    fn default() -> Self {
+        Self {
+            path: Default::default(),
+            lines: Default::default(),
+            code: Default::default(),
+        }
+    }
+}
+
 pub(super) struct Rg {
     treesitter: Treesitter,
     search_paths: Vec<PathBuf>,
     re: Regex,
     invert_match: bool,
     replace_text: Option<String>,
+    file: FileState,
 }
 
 impl Rg {
@@ -43,6 +60,36 @@ impl Rg {
             .build()
             .unwrap_or_else(|err| error_exit!("Failed to build regex:\n{}", err))
     }
+
+    fn basic_find(&self, ts_block: &SqlBlock, sql: &str) {
+        self.re
+            .find_iter(sql)
+            .map(|m| MatchRange::from_regex_match(ts_block, &m, &self.file.lines, &self.file.code))
+            .for_each(|rng| {
+                print(
+                    &self.file.path,
+                    rng.start_point.row + 1,
+                    Some(rng.start_point.column + 1),
+                    &self.file.code[rng.line_range],
+                    Some(rng.line_match_range),
+                )
+            });
+    }
+
+    fn inverse_find(&self, ts_block: &SqlBlock, sql: &str) {
+        if !self.re.is_match(sql) {
+            print(
+                &self.file.path,
+                ts_block.start_line_num(),
+                None,
+                ts_block.inner_text(&self.file.code),
+                None,
+            );
+        }
+    }
+    fn replace_text(&self, ts_block: &SqlBlock, sql: &str) {
+        todo!("handle replace text")
+    }
 }
 
 impl Program for Rg {
@@ -56,34 +103,25 @@ impl Program for Rg {
             re: Rg::make_regex(&rg_opts),
             invert_match: rg_opts.invert_match,
             replace_text: rg_opts.replace,
+            file: FileState::default(),
         }
     }
 
     fn run(&mut self) {
         for (code, path) in iter_valid_files(&self.search_paths) {
-            let path = path.as_path().to_str().unwrap();
-            for block in self.treesitter.sql_blocks(&code) {
-                let sql = block.inner_text(&code);
-                let lines = block_lines(&code);
-                if self.invert_match {
-                    todo!("handle invert match")
-                }
-                if self.replace_text.is_some() {
-                    todo!("handle replace text")
-                }
+            self.file.lines = block_lines(&code);
+            self.file.path = path.as_path().to_str().unwrap().to_string();
+            self.file.code = code;
 
-                self.re
-                    .find_iter(sql)
-                    .map(|m| MatchRange::from_regex_match(&block, &m, &lines, &code))
-                    .for_each(|rng| {
-                        print(
-                            path,
-                            rng.start_point.row + 1,
-                            Some(rng.start_point.column + 1),
-                            &code[rng.line_range],
-                            Some(rng.line_match_range),
-                        )
-                    });
+            for block in self.treesitter.sql_blocks(&self.file.code) {
+                let sql = block.inner_text(&self.file.code);
+                if self.invert_match {
+                    self.inverse_find(&block, sql);
+                } else if self.replace_text.is_some() {
+                    self.replace_text(&block, sql);
+                } else {
+                    self.basic_find(&block, sql);
+                }
             }
         }
     }
