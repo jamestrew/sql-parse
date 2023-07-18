@@ -1,4 +1,4 @@
-use std::{ops::Range, path::PathBuf};
+use std::{ops::Range, path::PathBuf, rc::Rc};
 
 use regex::{Match, Regex, RegexBuilder};
 use tree_sitter::Point;
@@ -11,25 +11,16 @@ use crate::{
     utils::*,
 };
 
+#[derive(Debug, Default)]
 struct FileState {
     path: String,
     lines: Vec<usize>,
     code: String,
 }
 
-impl Default for FileState {
-    fn default() -> Self {
-        Self {
-            path: Default::default(),
-            lines: Default::default(),
-            code: Default::default(),
-        }
-    }
-}
-
 pub(super) struct Rg {
     treesitter: Treesitter,
-    search_paths: Vec<PathBuf>,
+    search_paths: Rc<Vec<PathBuf>>,
     re: Regex,
     invert_match: bool,
     replace_text: Option<String>,
@@ -87,8 +78,13 @@ impl Rg {
             );
         }
     }
-    fn replace_text(&self, ts_block: &SqlBlock, sql: &str) {
-        todo!("handle replace text")
+    fn find_and_replace(&mut self, ts_block: &SqlBlock, replace_text: &str) {
+        let inner_text_range = ts_block.inner_text_range();
+        let sql = &self.file.code[inner_text_range.clone()];
+        let new_inner_text = self.re.replace_all(sql, replace_text).into_owned();
+        self.file
+            .code
+            .replace_range(inner_text_range, &new_inner_text);
     }
 }
 
@@ -99,7 +95,7 @@ impl Program for Rg {
 
         Self {
             treesitter,
-            search_paths,
+            search_paths: Rc::new(search_paths),
             re: Rg::make_regex(&rg_opts),
             invert_match: rg_opts.invert_match,
             replace_text: rg_opts.replace,
@@ -108,19 +104,29 @@ impl Program for Rg {
     }
 
     fn run(&mut self) {
-        for (code, path) in iter_valid_files(&self.search_paths) {
+        for (code, path) in iter_valid_files(&self.search_paths.clone()) {
             self.file.lines = block_lines(&code);
             self.file.path = path.as_path().to_str().unwrap().to_string();
             self.file.code = code;
 
-            for block in self.treesitter.sql_blocks(&self.file.code) {
-                let sql = block.inner_text(&self.file.code);
-                if self.invert_match {
-                    self.inverse_find(&block, sql);
-                } else if self.replace_text.is_some() {
-                    self.replace_text(&block, sql);
-                } else {
-                    self.basic_find(&block, sql);
+            if let Some(replace_text) = self.replace_text.clone() {
+                let mut change_count = 0;
+                for block in self.treesitter.sql_blocks(&self.file.code).iter().rev() {
+                    self.find_and_replace(block, &replace_text);
+                    change_count += 1;
+                }
+                if write_file(&self.file.path, self.file.code.as_bytes()).is_err() {
+                    eprintln!("Failed to write to path: {}", path.display());
+                }
+                println!("{change_count} changes made to {}", path.display());
+            } else {
+                for block in self.treesitter.sql_blocks(&self.file.code) {
+                    let sql = block.inner_text(&self.file.code);
+                    if self.invert_match {
+                        self.inverse_find(&block, sql);
+                    } else {
+                        self.basic_find(&block, sql);
+                    }
                 }
             }
         }
