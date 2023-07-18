@@ -30,8 +30,8 @@ pub enum Commands {
 }
 
 impl Commands {
-    pub fn basics(&self) -> (&Vec<PathBuf>, &PathBuf) {
-        match self {
+    pub fn basics(&self) -> (&Vec<PathBuf>, Option<&PathBuf>) {
+        let ret = match self {
             Commands::TS(Basics {
                 search_paths,
                 treesitter_query,
@@ -45,7 +45,8 @@ impl Commands {
                 treesitter_query,
                 ..
             }) => (search_paths, treesitter_query),
-        }
+        };
+        (ret.0, ret.1.as_ref())
     }
 }
 
@@ -53,7 +54,7 @@ impl Commands {
 pub struct Basics {
     /// Path for treesitter query file
     #[arg(short, long, value_name = "FILE")]
-    pub treesitter_query: PathBuf,
+    pub treesitter_query: Option<PathBuf>,
 
     /// Files to search through
     pub search_paths: Vec<PathBuf>,
@@ -63,7 +64,7 @@ pub struct Basics {
 pub struct RegexpOptions {
     /// Path for treesitter query file
     #[arg(short, long, value_name = "FILE")]
-    pub treesitter_query: PathBuf,
+    pub treesitter_query: Option<PathBuf>,
 
     #[command(flatten)]
     pub regexp: RegexpPattern,
