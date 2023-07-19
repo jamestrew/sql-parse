@@ -70,6 +70,7 @@ pub(crate) fn iter_valid_files(paths: &[PathBuf]) -> impl Iterator<Item = (Strin
             eprintln!("Path doesn't exist: {} -- skipping", path.display());
             return None;
         }
+
         if !is_python_file(path) {
             eprintln!(
                 "Non Python files unsupported: {} -- skipping",
@@ -77,6 +78,7 @@ pub(crate) fn iter_valid_files(paths: &[PathBuf]) -> impl Iterator<Item = (Strin
             );
             return None;
         }
+
         match std::fs::read_to_string(path) {
             Ok(code) => Some((code, path)),
             Err(_) => {
