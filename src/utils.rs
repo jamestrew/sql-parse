@@ -1,10 +1,9 @@
-use std::{
-    io::BufRead,
-    ops::Range,
-    path::{Path, PathBuf},
-};
+use std::io::BufRead;
+use std::ops::Range;
+use std::path::{Path, PathBuf};
 
-use crate::{cli::Cli, treesitter::Treesitter};
+use crate::cli::Cli;
+use crate::treesitter::Treesitter;
 
 #[macro_export]
 macro_rules! error_exit {

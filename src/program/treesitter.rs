@@ -1,7 +1,9 @@
 use std::path::PathBuf;
 
 use super::Program;
-use crate::{cli::Cli, treesitter::Treesitter as TS, utils::*};
+use crate::cli::Cli;
+use crate::treesitter::Treesitter as TS;
+use crate::utils::*;
 
 pub(crate) struct Treesitter {
     treesitter: TS,
