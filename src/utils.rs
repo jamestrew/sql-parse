@@ -1,3 +1,4 @@
+use console::style;
 use std::io::BufRead;
 use std::ops::Range;
 use std::path::{Path, PathBuf};
@@ -106,14 +107,13 @@ pub(crate) fn print(
     text: &str,
     match_rng: Option<Range<usize>>,
 ) {
-    use ansi_term::Color::{Green, Purple, Red};
 
     let content = if let Some(match_rng) = match_rng {
         let match_text = &text[match_rng.clone()];
         format!(
             "{}{}{}",
             &text[..match_rng.start],
-            Red.paint(match_text),
+            style(match_text).red(),
             &text[match_rng.end..]
         )
     } else {
@@ -128,8 +128,8 @@ pub(crate) fn print(
 
     println!(
         "{}:{}{}:{}",
-        Purple.paint(path),
-        Green.paint(lnum.to_string()),
+        style(path).magenta(),
+        style(lnum.to_string()).green(),
         column,
         content
     );

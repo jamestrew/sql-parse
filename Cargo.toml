@@ -8,10 +8,10 @@ description = "Use the power of tree-sitter to parse Python embedded SQL code."
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ansi_term = "0.12.1"
 anyhow = "*"
 atty = "0.2.14"
 clap = { version = "4.3.11", features = ["derive"] }
+console = "0.15.7"
 regex = "1.9.1"
 tree-sitter = "0.20.10"
 tree-sitter-python = { path = "tree-sitter-python" }
