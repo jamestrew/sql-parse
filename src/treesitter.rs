@@ -1,4 +1,5 @@
-use std::{fmt::Display, ops::Range};
+use std::fmt::Display;
+use std::ops::Range;
 
 use anyhow::anyhow;
 use tree_sitter::{Parser, Point, Query, QueryCursor};

@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
-use clap::{error::ErrorKind, Args, CommandFactory, Parser, Subcommand};
+use clap::error::ErrorKind;
+use clap::{Args, CommandFactory, Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(author,version,about,long_about=None)]
@@ -62,14 +63,14 @@ pub struct Basics {
 
 #[derive(Args)]
 pub struct RegexOptions {
-    /// Path for treesitter query file
+    /// Path for treesitter query file.
     #[arg(short, long, value_name = "FILE")]
     pub treesitter_query: Option<PathBuf>,
 
     #[command(flatten)]
     pub regex: RegexPattern,
 
-    /// Files to search through
+    /// Files to search through.
     pub search_paths: Vec<PathBuf>,
 
     /// Set regex search to be case insensitive.
@@ -92,6 +93,10 @@ pub struct RegexOptions {
         conflicts_with = "invert_match"
     )]
     pub replace: Option<String>,
+
+    /// Confirm each replace. Requires --replace to be used.
+    #[arg(short, long, default_value_t = false, requires = "replace")]
+    pub confirm: bool,
 }
 
 impl From<Commands> for RegexOptions {
