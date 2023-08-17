@@ -1,7 +1,7 @@
 ## sql-parse
 
 Build on top of tree-sitter (language parser) to allow for semantic searches and perform
-operations of the SQL code found within Python code.
+operations on SQL code found within Python code.
 
 #### Usage
 
