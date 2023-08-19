@@ -40,15 +40,7 @@ fn get_search_path(search_paths: &Vec<PathBuf>) -> Vec<PathBuf> {
 pub(crate) fn basic_cli_options(cli: &Cli) -> (Treesitter, Vec<PathBuf>) {
     let (search_path, ts_file) = cli.command.basics();
 
-    let ts_query = if let Some(ts_file) = ts_file {
-        std::fs::read_to_string(ts_file).unwrap_or_else(|_| {
-            error_exit!("Failed to read provided regex file: {}", ts_file.display())
-        })
-    } else {
-        include_str!("../queries/execute.scm").to_string()
-    };
-
-    let treesitter = Treesitter::try_from(ts_query).unwrap_or_else(|err| {
+    let treesitter = Treesitter::try_from(ts_file).unwrap_or_else(|err| {
         error_exit!("{}", err);
     });
 

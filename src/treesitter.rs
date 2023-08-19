@@ -157,6 +157,22 @@ impl TryFrom<String> for Treesitter {
     }
 }
 
+impl TryFrom<Option<&PathBuf>> for Treesitter {
+    type Error = anyhow::Error;
+
+    fn try_from(ts_file: Option<&PathBuf>) -> Result<Self, Self::Error> {
+        let ts_query = if let Some(ts_file) = ts_file {
+            std::fs::read_to_string(ts_file).unwrap_or_else(|_| {
+                error_exit!("Failed to read provided regex file: {}", ts_file.display())
+            })
+        } else {
+            include_str!("../queries/execute.scm").to_string()
+        };
+
+        Treesitter::try_from(ts_query)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
