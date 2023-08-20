@@ -1,4 +1,5 @@
 mod finder;
+mod utils;
 
 use std::path::PathBuf;
 use std::rc::Rc;

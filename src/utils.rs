@@ -1,7 +1,8 @@
-use console::style;
 use std::io::BufRead;
 use std::ops::Range;
 use std::path::{Path, PathBuf};
+
+use console::style;
 
 use crate::cli::Cli;
 use crate::treesitter::Treesitter;
@@ -99,7 +100,6 @@ pub(crate) fn print(
     text: &str,
     match_rng: Option<Range<usize>>,
 ) {
-
     let content = if let Some(match_rng) = match_rng {
         let match_text = &text[match_rng.clone()];
         format!(
