@@ -1,3 +1,4 @@
+#![allow(unused)]
 use std::ops::Range;
 
 use regex::{self, Match, Regex, RegexBuilder};
@@ -127,11 +128,51 @@ struct CodeDiff<'a> {
     before: &'a str,
     diff: &'a str,
     after: &'a str,
+    test: bool,
 }
 
 impl<'a> CodeDiff<'a> {
-    fn new(code: &'a str, rng: &'a MatchRange) -> Self {
-        todo!()
+    pub fn new_line(source_code: &'a str, rng: &'a MatchRange) -> Self {
+        let line = &source_code[rng.abs_line_range()];
+        Self {
+            before: &line[..rng.line_match_range.start],
+            diff: &line[rng.line_match_range()],
+            after: &line[rng.line_match_range.end..],
+            test: false,
+        }
+    }
+
+    fn new_line_t(source_code: &'a str, rng: &'a MatchRange) -> Self {
+        let mut s = Self::new_line(source_code, rng);
+        s.test = true;
+        s
+    }
+
+    fn new_block(block: &'a str, rng: &'a MatchRange) -> Self {
+        Self {
+            before: &block[..rng.block_match_range.start],
+            diff: &block[rng.block_match_range()],
+            after: &block[rng.block_match_range.end..],
+            test: false,
+        }
+    }
+
+    fn new_block_t(source_code: &'a str, rng: &'a MatchRange) -> Self {
+        let mut s = Self::new_block(source_code, rng);
+        s.test = true;
+        s
+    }
+
+    fn set_diff_color(self, color: console::Color) -> String {
+        format!(
+            "{}{}{}",
+            self.before,
+            console::Style::new()
+                .fg(color)
+                .force_styling(self.test)
+                .apply_to(self.diff),
+            self.after
+        )
     }
 }
 
@@ -147,6 +188,23 @@ pub fn block_lines(code: &str) -> Vec<usize> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::treesitter::Treesitter;
+
+    fn ts_block(input: &str) -> SqlBlock {
+        let mut ts = Treesitter::try_from(None).unwrap();
+        let block = ts.sql_blocks(input).pop().unwrap();
+        block
+    }
+
+    fn get_first_rng(input: &str, re_str: &str) -> MatchRange {
+        let mut ts = Treesitter::try_from(None).unwrap();
+        let block = ts.sql_blocks(input).pop().unwrap();
+        let sql = &input[block.inner_text_range()];
+        let re = regex::Regex::new(re_str).unwrap();
+        let m = re.find(sql).unwrap();
+        let lines = block_lines(input);
+        MatchRange::from_regex_match(&block, &m, &lines, input)
+    }
 
     #[test]
     fn test_block_lines() {
@@ -156,8 +214,8 @@ mod test {
     }
 
     mod match_range {
+        use super::*;
         use crate::program::rg::utils::*;
-        use crate::treesitter::Treesitter;
 
         macro_rules! assert_rng {
             ($actual:expr, $expected:expr, $sql:expr) => {
@@ -189,16 +247,6 @@ mod test {
                     )
                 }
             };
-        }
-
-        fn get_first_rng(input: &str, re_str: &str) -> MatchRange {
-            let mut ts = Treesitter::try_from(None).unwrap();
-            let block = ts.sql_blocks(&input).pop().unwrap();
-            let sql = &input[block.inner_text_range()];
-            let re = regex::Regex::new(re_str).unwrap();
-            let m = re.find(sql).unwrap();
-            let lines = block_lines(&input);
-            MatchRange::from_regex_match(&block, &m, &lines, &input)
         }
 
         #[test]
@@ -247,6 +295,34 @@ SELECT 'hi'""";)"#;
             };
             assert_rng!(rng, expected, input);
             assert_eq!(rng.match_length(), 6);
+        }
+    }
+
+    mod code_diff {
+        use super::*;
+        use crate::program::rg::utils::*;
+
+        #[test]
+        fn new_line() {
+            let input = r#"crs.execute("SELECT 'yo'; SELECT 'hi'";)"#;
+            let rng = get_first_rng(input, "SELECT");
+            let actual = CodeDiff::new_line_t(input, &rng).set_diff_color(console::Color::Green);
+            let expect = "crs.execute(\"\u{1b}[32mSELECT\u{1b}[0m 'yo'; SELECT 'hi'\";)";
+
+            assert_eq!(actual, expect);
+        }
+
+        #[test]
+        fn new_block() {
+            let input = r#"crs.execute("""
+SELECT 'yo';
+SELECT 'hi'""";)"#;
+            let block = ts_block(input);
+            let rng = get_first_rng(input, "SELECT");
+
+            let actual = CodeDiff::new_block_t(block.inner_text(input), &rng)
+                .set_diff_color(console::Color::Green);
+            let expect = "crs.execute(\"\"\"\n\u{1b}[32mSELECT\u{1b}[0m 'yo';\nSELECT 'hi'\"\"\";)";
         }
     }
 }
