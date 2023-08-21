@@ -53,7 +53,7 @@ impl std::fmt::Debug for MatchRange {
         writeln!(f, "  abs_match_range: {:?},", self.abs_match_range)?;
         writeln!(f, "  block_match_range: {:?},", self.block_match_range)?;
         writeln!(f, "  start_point: {:?},", self.start_point)?;
-        writeln!(f, "  line_range: {:?},", self.abs_line_range)?;
+        writeln!(f, "  abs_line_range: {:?},", self.abs_line_range)?;
         writeln!(f, "  line_match_range: {:?},", self.line_match_range)?;
         writeln!(f, "}}")
     }
@@ -66,30 +66,43 @@ impl MatchRange {
         lines: &[usize],
         code: &str,
     ) -> Self {
-        let start_byte = ts_block.string_start.byte_range.end + regex_match.start();
-        let end_byte = ts_block.string_start.byte_range.end + regex_match.end();
+        let block_match_start = regex_match.start();
+        let block_match_end = regex_match.end();
+
+        let abs_start = ts_block.string_start.byte_range.end + block_match_start;
+        let abs_end = ts_block.string_start.byte_range.end + block_match_end;
 
         let row = lines
             .iter()
             .rposition(|&line_byte| {
-                line_byte <= regex_match.start() + ts_block.string_start.byte_range.end
+                line_byte <= block_match_start + ts_block.string_start.byte_range.end
             })
             .unwrap_or(0);
 
-        let line_start = lines[row];
-        let line_end = code[start_byte..]
-            .chars()
-            .position(|byte| byte == '\n')
-            .unwrap_or(code.len() - start_byte)
-            + start_byte;
-        let column = start_byte - line_start;
+        let abs_line_start = lines[row];
+        let match_last_line_idx = lines
+            .iter()
+            .rposition(|&line_byte| line_byte <= abs_end)
+            .unwrap_or(0);
+        let match_last_line_abs_pos = lines[match_last_line_idx];
+        let abs_line_end = code[match_last_line_abs_pos..]
+            .find('\n')
+            .and_then(|line_end_pos| {
+                if row != match_last_line_idx {
+                    Some(line_end_pos + match_last_line_abs_pos)
+                } else {
+                    Some(line_end_pos + abs_line_start)
+                }
+            })
+            .unwrap_or(code.len());
+        let column = abs_start - abs_line_start;
 
         Self {
-            abs_match_range: start_byte..end_byte,
-            block_match_range: regex_match.start()..regex_match.end(),
+            abs_match_range: abs_start..abs_end,
+            block_match_range: block_match_start..block_match_end,
             start_point: Point { row, column },
-            abs_line_range: line_start..line_end,
-            line_match_range: column..(column + regex_match.end() - regex_match.start()),
+            abs_line_range: abs_line_start..abs_line_end,
+            line_match_range: column..(column + block_match_end - block_match_start),
         }
     }
 
@@ -201,7 +214,7 @@ mod test {
         let block = ts.sql_blocks(input).pop().unwrap();
         let sql = &input[block.inner_text_range()];
         let re = regex::Regex::new(re_str).unwrap();
-        let m = re.find(sql).unwrap();
+        let m = re.find(sql).expect("not testing the lack of matches");
         let lines = block_lines(input);
         MatchRange::from_regex_match(&block, &m, &lines, input)
     }
@@ -226,19 +239,9 @@ mod test {
                         bad_text.push_str(&$sql[$actual.abs_match_range()]);
                         bad_text.push_str("\n");
                     }
-                    if $actual.block_match_range != $expected.block_match_range {
-                        bad_text.push_str("block_match_range: ");
-                        bad_text.push_str(&$sql[$actual.block_match_range()]);
-                        bad_text.push_str("\n");
-                    }
                     if $actual.abs_line_range != $expected.abs_line_range {
                         bad_text.push_str("line_range: ");
                         bad_text.push_str(&$sql[$actual.abs_line_range()]);
-                        bad_text.push_str("\n");
-                    }
-                    if $actual.line_match_range != $expected.line_match_range {
-                        bad_text.push_str("line_match_range: ");
-                        bad_text.push_str(&$sql[$actual.line_match_range()]);
                         bad_text.push_str("\n");
                     }
                     panic!(
@@ -296,6 +299,41 @@ SELECT 'hi'""";)"#;
             assert_rng!(rng, expected, input);
             assert_eq!(rng.match_length(), 6);
         }
+
+        #[test]
+        fn multi_line_pattern() {
+            let input = r#"crs.execute("""foo
+SELECT 'yo';
+SELECT 'hi'""";)"#;
+            let rng = get_first_rng(input, "foo\nSELECT");
+            let expected = MatchRange {
+                abs_match_range: 15..25,
+                block_match_range: 0..10,
+                start_point: Point { row: 0, column: 15 },
+                abs_line_range: 0..31,
+                line_match_range: 15..25,
+            };
+            assert_rng!(rng, expected, input);
+            assert_eq!(rng.match_length(), 10);
+        }
+
+        #[test]
+        fn multi_line_pattern_second_line() {
+            let input = r#"crs.execute("""
+foo
+SELECT 'yo';
+SELECT 'hi'""";)"#;
+            let rng = get_first_rng(input, "foo\nSELECT");
+            let expected = MatchRange {
+                abs_match_range: 16..26,
+                block_match_range: 1..11,
+                start_point: Point { row: 1, column: 0 },
+                abs_line_range: 16..32,
+                line_match_range: 0..10,
+            };
+            assert_rng!(rng, expected, input);
+            assert_eq!(rng.match_length(), 10);
+        }
     }
 
     mod code_diff {
@@ -310,6 +348,17 @@ SELECT 'hi'""";)"#;
             let expect = "crs.execute(\"\u{1b}[32mSELECT\u{1b}[0m 'yo'; SELECT 'hi'\";)";
 
             assert_eq!(actual, expect);
+        }
+
+        #[ignore]
+        #[test]
+        fn multi_line() {
+            let input = r#"crs.execute("""foo
+SELECT 'yo';
+SELECT 'hi'""";)"#;
+            let rng = get_first_rng(input, "foo\nSELECT");
+            let actual = CodeDiff::new_line_t(input, &rng).set_diff_color(console::Color::Green);
+            assert_eq!(actual, "foo");
         }
 
         #[test]
