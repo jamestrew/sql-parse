@@ -1,7 +1,7 @@
-#![allow(unused)]
+use std::borrow::Cow;
 use std::ops::Range;
 
-use regex::{self, Match, Regex, RegexBuilder};
+use regex::{self, Match, Regex, RegexBuilder, Replacer};
 use tree_sitter::Point;
 
 use crate::cli::RegexOptions;
@@ -144,6 +144,13 @@ pub struct CodeDiff<'a> {
 }
 
 impl<'a> CodeDiff<'a> {
+    pub fn new_raw(before: &'a str, diff: &'a str, after: &'a str) -> Self {
+        Self {
+            before,
+            diff,
+            after,
+        }
+    }
     pub fn new_line(source_code: &'a str, rng: &'a MatchRange) -> Self {
         let line = &source_code[rng.abs_line_range()];
         Self {
@@ -161,13 +168,13 @@ impl<'a> CodeDiff<'a> {
         }
     }
 
-    pub fn set_diff_color(self, color: console::Color) -> String {
+    pub fn with_diff_color(self, color: console::Color, force_styling: bool) -> String {
         format!(
             "{}{}{}",
             self.before,
             console::Style::new()
                 .fg(color)
-                .force_styling(true)
+                .force_styling(force_styling)
                 .apply_to(self.diff),
             self.after
         )
@@ -181,6 +188,46 @@ pub fn block_lines(code: &str) -> Vec<usize> {
         .filter(|(_, ch)| *ch == '\n')
         .for_each(|(idx, _)| lines.push(idx + 1));
     lines
+}
+
+pub fn replace_in_range<'h, R: Replacer>(
+    regex: &Regex,
+    haystack: &'h str,
+    rng: Range<usize>,
+    rep: R,
+) -> Cow<'h, str> {
+    if rng.start >= rng.end || rng.end > haystack.len() {
+        return Cow::Borrowed(haystack);
+    }
+
+    let before = &haystack[0..rng.start];
+    let target = &haystack[rng.start..rng.end];
+    let after = &haystack[rng.end..];
+
+    let replaced_target = regex.replace(target, rep);
+    Cow::Owned(format!("{}{}{}", before, replaced_target, after))
+}
+
+pub fn replace_in_range_partitioned<'h, R: Replacer>(
+    regex: &Regex,
+    haystack: &'h str,
+    rng: Range<usize>,
+    rep: R,
+) -> (Cow<'h, str>, Cow<'h, str>, Cow<'h, str>) {
+    if rng.start >= rng.end || rng.end > haystack.len() {
+        return (
+            Cow::Borrowed(haystack),
+            Cow::Borrowed(""),
+            Cow::Borrowed(""),
+        );
+    }
+
+    let before = Cow::Borrowed(&haystack[0..rng.start]);
+    let target = &haystack[rng.start..rng.end];
+    let after = Cow::Borrowed(&haystack[rng.end..]);
+
+    let replaced_target = regex.replace(target, rep);
+    (before, replaced_target, after)
 }
 
 #[cfg(test)]
@@ -203,16 +250,8 @@ mod test {
         MatchRange::from_regex_match(&block, &m, &lines, input)
     }
 
-    #[test]
-    fn test_block_lines() {
-        let input = "hello\nworld";
-        let expected = vec![0, 6];
-        assert_eq!(block_lines(input), expected);
-    }
-
     mod match_range {
         use super::*;
-        use crate::program::rg::utils::*;
 
         macro_rules! assert_rng {
             ($actual:expr, $expected:expr, $sql:expr) => {
@@ -322,14 +361,14 @@ SELECT 'hi'""";)"#;
 
     mod code_diff {
         use super::*;
-        use crate::program::rg::utils::*;
 
         #[test]
         fn new_line() {
-            let input = r#"crs.execute("SELECT 'yo'; SELECT 'hi'";)"#;
+            let input = r#"crs.execute("SELECT 'yo'; SELECT 'hi';")"#;
             let rng = get_first_rng(input, "SELECT");
-            let actual = CodeDiff::new_line(input, &rng).set_diff_color(console::Color::Green);
-            let expect = "crs.execute(\"\u{1b}[32mSELECT\u{1b}[0m 'yo'; SELECT 'hi'\";)";
+            let actual =
+                CodeDiff::new_line(input, &rng).with_diff_color(console::Color::Green, true);
+            let expect = "crs.execute(\"\u{1b}[32mSELECT\u{1b}[0m 'yo'; SELECT 'hi';\")";
 
             assert_eq!(actual, expect);
         }
@@ -339,9 +378,10 @@ SELECT 'hi'""";)"#;
         fn multi_line() {
             let input = r#"crs.execute("""foo
 SELECT 'yo';
-SELECT 'hi'""";)"#;
+SELECT 'hi';""")"#;
             let rng = get_first_rng(input, "foo\nSELECT");
-            let actual = CodeDiff::new_line(input, &rng).set_diff_color(console::Color::Green);
+            let actual =
+                CodeDiff::new_line(input, &rng).with_diff_color(console::Color::Green, true);
             assert_eq!(actual, "foo");
         }
 
@@ -349,13 +389,61 @@ SELECT 'hi'""";)"#;
         fn new_block() {
             let input = r#"crs.execute("""
 SELECT 'yo';
-SELECT 'hi'""";)"#;
+SELECT 'hi';""")"#;
             let block = ts_block(input);
             let rng = get_first_rng(input, "SELECT");
 
             let actual = CodeDiff::new_block(block.inner_text(input), &rng)
-                .set_diff_color(console::Color::Green);
-            let expect = "crs.execute(\"\"\"\n\u{1b}[32mSELECT\u{1b}[0m 'yo';\nSELECT 'hi'\"\"\";)";
+                .with_diff_color(console::Color::Green, true);
+            let expect = "\n\u{1b}[32mSELECT\u{1b}[0m 'yo';\nSELECT 'hi';";
+            assert_eq!(actual, expect);
         }
+    }
+
+    #[test]
+    fn test_block_lines() {
+        let input = "hello\nworld";
+        let expected = vec![0, 6];
+        assert_eq!(block_lines(input), expected);
+    }
+
+    #[test]
+    fn test_replace_in_range_1() {
+        let regex = Regex::new(r"\d+").unwrap();
+        let text = "The numbers 1234 are here, and 5678 are there.";
+        let range = 16..42;
+        let result = replace_in_range(&regex, text, range, "****");
+        assert_eq!(result, "The numbers 1234 are here, and **** are there.");
+    }
+
+    #[test]
+    fn test_replace_in_range_2() {
+        let regex = Regex::new(r"\d+").unwrap();
+        let text = "The numbers 1234 are here, and 5678 are there.";
+        let range = 16..42;
+        let result = replace_in_range(&regex, text, range, "<REDACTED>");
+        assert_eq!(result, "The numbers 1234 are here, and <REDACTED> are there.");
+    }
+
+    #[test]
+    fn test_replace_in_range_partitioned_1() {
+        let regex = Regex::new(r"\d+").unwrap();
+        let text = "The numbers 1234 are here, and 5678 are there.";
+        let range = 16..42;
+        let result = replace_in_range_partitioned(&regex, text, range, "****");
+        assert_eq!(result.0, "The numbers 1234");
+        assert_eq!(result.1, " are here, and **** are th");
+        assert_eq!(result.2, "ere.");
+    }
+
+    #[test]
+    fn test_replace_in_range_partitioned_2() {
+        let regex = Regex::new(r"\d+").unwrap();
+        let text = "The numbers 1234 are here, and 5678 are there.";
+        let range = 16..42;
+        let result = replace_in_range_partitioned(&regex, text, range, "<REDACTED>");
+        assert_eq!(result.0, "The numbers 1234");
+        assert_eq!(result.1, " are here, and <REDACTED> are th");
+        assert_eq!(result.2, "ere.");
     }
 }
