@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::str::FromStr;
 
-use console::{pad_str, style, Term};
+use console::{self, pad_str, style, Term};
 use regex::{self, Regex};
 use textwrap::wrap;
 
@@ -54,12 +54,13 @@ impl Finder for PlainSearch {
                 .find_iter(sql)
                 .map(|m| MatchRange::from_regex_match(&block, &m, &file.lines, &file.code))
                 .for_each(|rng| {
+                    let line =
+                        CodeDiff::new_line(&file.code, &rng).set_diff_color(console::Color::Green);
                     print(
                         &file.path,
                         rng.start_point.row + 1,
                         Some(rng.start_point.column + 1),
-                        &file.code[rng.abs_line_range()],
-                        Some(rng.line_match_range()),
+                        &line,
                     )
                 });
         }
@@ -87,7 +88,6 @@ impl Finder for InverseSearch {
                     block.start_line_num(),
                     None,
                     block.inner_text(&file.code),
-                    None,
                 );
             }
         }

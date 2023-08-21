@@ -28,7 +28,6 @@ impl Program for Treesitter {
                     block.start_line_num(),
                     None,
                     block.inner_text(&code),
-                    None,
                 );
             }
         }

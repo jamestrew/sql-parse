@@ -1,5 +1,4 @@
 use std::io::BufRead;
-use std::ops::Range;
 use std::path::{Path, PathBuf};
 
 use console::style;
@@ -93,25 +92,7 @@ where
     Ok(())
 }
 
-pub(crate) fn print(
-    path: &str,
-    lnum: usize,
-    col: Option<usize>,
-    text: &str,
-    match_rng: Option<Range<usize>>,
-) {
-    let content = if let Some(match_rng) = match_rng {
-        let match_text = &text[match_rng.clone()];
-        format!(
-            "{}{}{}",
-            &text[..match_rng.start],
-            style(match_text).red(),
-            &text[match_rng.end..]
-        )
-    } else {
-        text.to_string()
-    };
-
+pub(crate) fn print(path: &str, lnum: usize, col: Option<usize>, text: &str) {
     let column = if let Some(col) = col {
         format!(":{col}")
     } else {
@@ -123,6 +104,6 @@ pub(crate) fn print(
         style(path).magenta(),
         style(lnum.to_string()).green(),
         column,
-        content
+        text
     );
 }

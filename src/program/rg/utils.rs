@@ -137,11 +137,10 @@ impl MatchRange {
     }
 }
 
-struct CodeDiff<'a> {
+pub struct CodeDiff<'a> {
     before: &'a str,
     diff: &'a str,
     after: &'a str,
-    test: bool,
 }
 
 impl<'a> CodeDiff<'a> {
@@ -151,38 +150,24 @@ impl<'a> CodeDiff<'a> {
             before: &line[..rng.line_match_range.start],
             diff: &line[rng.line_match_range()],
             after: &line[rng.line_match_range.end..],
-            test: false,
         }
     }
 
-    fn new_line_t(source_code: &'a str, rng: &'a MatchRange) -> Self {
-        let mut s = Self::new_line(source_code, rng);
-        s.test = true;
-        s
-    }
-
-    fn new_block(block: &'a str, rng: &'a MatchRange) -> Self {
+    pub fn new_block(block: &'a str, rng: &'a MatchRange) -> Self {
         Self {
             before: &block[..rng.block_match_range.start],
             diff: &block[rng.block_match_range()],
             after: &block[rng.block_match_range.end..],
-            test: false,
         }
     }
 
-    fn new_block_t(source_code: &'a str, rng: &'a MatchRange) -> Self {
-        let mut s = Self::new_block(source_code, rng);
-        s.test = true;
-        s
-    }
-
-    fn set_diff_color(self, color: console::Color) -> String {
+    pub fn set_diff_color(self, color: console::Color) -> String {
         format!(
             "{}{}{}",
             self.before,
             console::Style::new()
                 .fg(color)
-                .force_styling(self.test)
+                .force_styling(true)
                 .apply_to(self.diff),
             self.after
         )
@@ -344,7 +329,7 @@ SELECT 'hi'""";)"#;
         fn new_line() {
             let input = r#"crs.execute("SELECT 'yo'; SELECT 'hi'";)"#;
             let rng = get_first_rng(input, "SELECT");
-            let actual = CodeDiff::new_line_t(input, &rng).set_diff_color(console::Color::Green);
+            let actual = CodeDiff::new_line(input, &rng).set_diff_color(console::Color::Green);
             let expect = "crs.execute(\"\u{1b}[32mSELECT\u{1b}[0m 'yo'; SELECT 'hi'\";)";
 
             assert_eq!(actual, expect);
@@ -357,7 +342,7 @@ SELECT 'hi'""";)"#;
 SELECT 'yo';
 SELECT 'hi'""";)"#;
             let rng = get_first_rng(input, "foo\nSELECT");
-            let actual = CodeDiff::new_line_t(input, &rng).set_diff_color(console::Color::Green);
+            let actual = CodeDiff::new_line(input, &rng).set_diff_color(console::Color::Green);
             assert_eq!(actual, "foo");
         }
 
@@ -369,7 +354,7 @@ SELECT 'hi'""";)"#;
             let block = ts_block(input);
             let rng = get_first_rng(input, "SELECT");
 
-            let actual = CodeDiff::new_block_t(block.inner_text(input), &rng)
+            let actual = CodeDiff::new_block(block.inner_text(input), &rng)
                 .set_diff_color(console::Color::Green);
             let expect = "crs.execute(\"\"\"\n\u{1b}[32mSELECT\u{1b}[0m 'yo';\nSELECT 'hi'\"\"\";)";
         }
