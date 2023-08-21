@@ -82,6 +82,7 @@ impl Finder for InverseSearch {
         for block in ts.sql_blocks(&file.code) {
             let sql = block.inner_text(&file.code);
 
+            // maybe check line by line?
             if !self.re.is_match(sql) {
                 print(
                     &file.path,

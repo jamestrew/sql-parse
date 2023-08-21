@@ -87,11 +87,11 @@ impl MatchRange {
         let match_last_line_abs_pos = lines[match_last_line_idx];
         let abs_line_end = code[match_last_line_abs_pos..]
             .find('\n')
-            .and_then(|line_end_pos| {
+            .map(|line_end_pos| {
                 if row != match_last_line_idx {
-                    Some(line_end_pos + match_last_line_abs_pos)
+                    line_end_pos + match_last_line_abs_pos
                 } else {
-                    Some(line_end_pos + abs_line_start)
+                    line_end_pos + abs_line_start
                 }
             })
             .unwrap_or(code.len());
@@ -106,13 +106,13 @@ impl MatchRange {
         }
     }
 
-    pub fn shifted_ranged(&self, bytes: usize) -> MatchRange {
+    pub fn shifted_ranged(&self, chars: usize) -> MatchRange {
         Self {
-            abs_match_range: self.abs_match_range.start..self.abs_match_range.end + bytes,
-            block_match_range: self.block_match_range.start..self.block_match_range.end + bytes,
+            abs_match_range: self.abs_match_range.start..self.abs_match_range.end + chars,
+            block_match_range: self.block_match_range.start..self.block_match_range.end + chars,
             start_point: self.start_point,
-            abs_line_range: self.abs_line_range.start..self.abs_line_range.end + bytes,
-            line_match_range: self.line_match_range.start..self.line_match_range.end + bytes,
+            abs_line_range: self.abs_line_range.start..self.abs_line_range.end + chars,
+            line_match_range: self.line_match_range.start..self.line_match_range.end + chars,
         }
     }
 
@@ -190,8 +190,7 @@ mod test {
 
     fn ts_block(input: &str) -> SqlBlock {
         let mut ts = Treesitter::try_from(None).unwrap();
-        let block = ts.sql_blocks(input).pop().unwrap();
-        block
+        ts.sql_blocks(input).pop().unwrap()
     }
 
     fn get_first_rng(input: &str, re_str: &str) -> MatchRange {
