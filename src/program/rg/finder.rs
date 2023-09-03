@@ -10,7 +10,7 @@ use textwrap::wrap;
 use super::utils::*;
 use crate::cli::RegexOptions;
 use crate::treesitter::Treesitter;
-use crate::{utils::*, error_exit};
+use crate::utils::*;
 
 pub enum FindChoice {
     Continue,
@@ -54,8 +54,8 @@ impl Finder for PlainSearch {
                 .find_iter(sql)
                 .map(|m| MatchRange::from_regex_match(&block, &m, &file.lines, &file.code))
                 .for_each(|rng| {
-                    let line = CodeDiff::new_line(&file.code, &rng)
-                        .with_diff_color(console::Color::Green, true);
+                    let line =
+                        CodeDiff::new_line(&file.code, &rng).with_diff_color(console::Color::Green);
                     print(
                         &file.path,
                         rng.start_point.row + 1,
@@ -150,6 +150,17 @@ impl FromStr for ConfirmAns {
     }
 }
 
+struct DiffData<'a> {
+    sql_code: &'a str,
+    rng: &'a MatchRange,
+}
+
+impl<'a> DiffData<'a> {
+    fn new(sql_code: &'a str, rng: &'a MatchRange) -> Self {
+        Self { sql_code, rng }
+    }
+}
+
 pub struct ReplaceConfirm {
     re: Regex,
     replace_text: String,
@@ -159,7 +170,7 @@ pub struct ReplaceConfirm {
 
 impl ReplaceConfirm {
     fn left_side_diff(&self, sql_code: &str, rng: &MatchRange) -> String {
-        CodeDiff::new_block(sql_code, rng).with_diff_color(console::Color::Red, false)
+        CodeDiff::new_block(sql_code, rng).with_diff_color(console::Color::Red)
     }
 
     fn right_side_diff(&self, sql_code: &str, rng: &MatchRange) -> String {
@@ -169,53 +180,35 @@ impl ReplaceConfirm {
             rng.block_match_range(),
             &self.replace_text,
         );
-        CodeDiff::new_raw(&before, &diff, &after).with_diff_color(console::Color::Red, false)
+        CodeDiff::new_raw(&before, &diff, &after).with_diff_color(console::Color::Green)
     }
 
     fn print_confirm(
         &mut self,
         path: &str,
-        sql_code: &str,
-        rng: &MatchRange,
+        left: DiffData,
+        right: DiffData,
     ) -> anyhow::Result<ConfirmAns> {
         self.term.clear_screen()?;
 
         println!(
             "{}:{}:{}",
             style(path).magenta(),
-            style((rng.start_point.row + 1).to_string()).green(),
-            rng.start_point.column + 1,
+            style((left.rng.start_point.row + 1).to_string()).green(),
+            left.rng.start_point.column + 1,
         );
-
         self.print_sep("SQL BLOCK");
 
-        // let left = format!(
-        //     "{}{}{}",
-        //     &sql_code[..rng.block_match_range.start],
-        //     style(&sql_code[rng.block_match_range()]).red(),
-        //     &sql_code[rng.block_match_range.end..]
-        // );
-        // let match_line = &sql_code[rng.block_match_range()];
-        // let replaced = self
-        //     .re
-        //     .replace_all(match_line, &self.replace_text)
-        //     .into_owned();
-        // let right = format!(
-        //     "{}{}{}",
-        //     &sql_code[..rng.block_match_range.start],
-        //     style(&replaced).green(),
-        //     &sql_code[rng.block_match_range.end..]
-        // );
-        let left = self.left_side_diff(sql_code, rng);
-        let right = self.right_side_diff(sql_code, rng);
+        let left_text = self.left_side_diff(left.sql_code, left.rng);
+        let right_text = self.right_side_diff(right.sql_code, right.rng);
 
         let max_length = (self.term.size().1 as usize / 2) - 2;
 
-        let lines_left = wrap(&left, max_length)
+        let lines_left = wrap(&left_text, max_length)
             .iter()
             .map(|s| s.to_string())
             .collect::<Vec<_>>();
-        let lines_right = wrap(&right, max_length)
+        let lines_right = wrap(&right_text, max_length)
             .iter()
             .map(|s| s.to_string())
             .collect::<Vec<_>>();
@@ -289,7 +282,6 @@ impl ReplaceConfirm {
 
 impl Finder for ReplaceConfirm {
     fn new_finder(rg_opts: &RegexOptions) -> Self {
-        error_exit!("--confirm still under construction");
         let term = Term::stdout();
         term.hide_cursor().unwrap();
 
@@ -336,10 +328,10 @@ impl Finder for ReplaceConfirm {
                     continue;
                 }
 
-                // TODO: need to send both display_sql/rng AND actual sql/rng
-                // for right and left side respectively
+                let left = DiffData::new(sql, &rng);
+                let right = DiffData::new(&display_sql, &display_rng);
                 let ans = self
-                    .print_confirm(&file.path, &display_sql, &display_rng)
+                    .print_confirm(&file.path, left, right)
                     .expect("failed to print confirmation message");
 
                 match ans {
@@ -353,7 +345,7 @@ impl Finder for ReplaceConfirm {
                             &self.replace_text,
                         )
                         .to_string();
-                        shift = (display_sql.len() as i32 - pre_replace_len as i32).abs() as usize;
+                        shift = display_sql.len() as isize - pre_replace_len as isize;
                     }
                     ConfirmAns::No => {}
                     ConfirmAns::Quit => break 'outer,

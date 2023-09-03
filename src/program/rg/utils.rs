@@ -106,16 +106,23 @@ impl MatchRange {
         }
     }
 
-    pub fn shifted_ranged(&self, chars: usize) -> MatchRange {
+    pub fn shifted_ranged(&self, chars: isize) -> MatchRange {
+        fn adjust_range(range: Range<usize>, chars: isize) -> Range<usize> {
+            let shifted_start = (range.start as isize + chars) as usize;
+            let shifted_end = (range.end as isize + chars) as usize;
+            shifted_start..shifted_end
+        }
+
         Self {
-            abs_match_range: self.abs_match_range.start..self.abs_match_range.end + chars,
-            block_match_range: self.block_match_range.start..self.block_match_range.end + chars,
-            start_point: self.start_point,
-            abs_line_range: self.abs_line_range.start..self.abs_line_range.end + chars,
-            line_match_range: self.line_match_range.start..self.line_match_range.end + chars,
+            abs_match_range: adjust_range(self.abs_match_range(), chars),
+            block_match_range: adjust_range(self.block_match_range(), chars),
+            start_point: self.start_point, // bad bad bad but w/e
+            abs_line_range: adjust_range(self.abs_line_range(), chars),
+            line_match_range: adjust_range(self.line_match_range(), chars),
         }
     }
 
+    #[allow(unused)]
     pub fn match_length(&self) -> usize {
         self.line_match_range.len()
     }
@@ -168,13 +175,13 @@ impl<'a> CodeDiff<'a> {
         }
     }
 
-    pub fn with_diff_color(self, color: console::Color, force_styling: bool) -> String {
+    pub fn with_diff_color(self, color: console::Color) -> String {
         format!(
             "{}{}{}",
             self.before,
             console::Style::new()
                 .fg(color)
-                .force_styling(force_styling)
+                .force_styling(true)
                 .apply_to(self.diff),
             self.after
         )
@@ -366,8 +373,7 @@ SELECT 'hi'""";)"#;
         fn new_line() {
             let input = r#"crs.execute("SELECT 'yo'; SELECT 'hi';")"#;
             let rng = get_first_rng(input, "SELECT");
-            let actual =
-                CodeDiff::new_line(input, &rng).with_diff_color(console::Color::Green, true);
+            let actual = CodeDiff::new_line(input, &rng).with_diff_color(console::Color::Green);
             let expect = "crs.execute(\"\u{1b}[32mSELECT\u{1b}[0m 'yo'; SELECT 'hi';\")";
 
             assert_eq!(actual, expect);
@@ -380,8 +386,7 @@ SELECT 'hi'""";)"#;
 SELECT 'yo';
 SELECT 'hi';""")"#;
             let rng = get_first_rng(input, "foo\nSELECT");
-            let actual =
-                CodeDiff::new_line(input, &rng).with_diff_color(console::Color::Green, true);
+            let actual = CodeDiff::new_line(input, &rng).with_diff_color(console::Color::Green);
             assert_eq!(actual, "foo");
         }
 
@@ -394,7 +399,7 @@ SELECT 'hi';""")"#;
             let rng = get_first_rng(input, "SELECT");
 
             let actual = CodeDiff::new_block(block.inner_text(input), &rng)
-                .with_diff_color(console::Color::Green, true);
+                .with_diff_color(console::Color::Green);
             let expect = "\n\u{1b}[32mSELECT\u{1b}[0m 'yo';\nSELECT 'hi';";
             assert_eq!(actual, expect);
         }
@@ -422,7 +427,10 @@ SELECT 'hi';""")"#;
         let text = "The numbers 1234 are here, and 5678 are there.";
         let range = 16..42;
         let result = replace_in_range(&regex, text, range, "<REDACTED>");
-        assert_eq!(result, "The numbers 1234 are here, and <REDACTED> are there.");
+        assert_eq!(
+            result,
+            "The numbers 1234 are here, and <REDACTED> are there."
+        );
     }
 
     #[test]
