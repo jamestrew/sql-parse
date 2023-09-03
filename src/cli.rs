@@ -13,7 +13,7 @@ pub struct Cli {
 impl Cli {
     pub fn missing_paths_error() {
         let mut cli = Cli::command();
-        cli.error(ErrorKind::MissingRequiredArgument, "Missing search paths")
+        cli.error(ErrorKind::MissingRequiredArgument, "Missing search path(s)")
             .exit();
     }
 }

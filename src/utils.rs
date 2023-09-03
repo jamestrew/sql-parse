@@ -37,14 +37,37 @@ fn get_search_path(search_paths: &Vec<PathBuf>) -> Vec<PathBuf> {
     }
 }
 
+fn expand_paths(search_paths: Vec<PathBuf>) -> Vec<PathBuf> {
+    let mut expanded = Vec::new();
+
+    for path in search_paths {
+        if path.is_dir() {
+            if let Ok(files) = std::fs::read_dir(&path) {
+                for file in files {
+                    if let Ok(entry) = file {
+                        let path = entry.path();
+                        if path.is_file() && is_python_file(&path) {
+                            expanded.push(path);
+                        }
+                    }
+                }
+            }
+        } else {
+            expanded.push(path);
+        }
+    }
+    expanded
+}
+
 pub(crate) fn basic_cli_options(cli: &Cli) -> (Treesitter, Vec<PathBuf>) {
     let (search_path, ts_file) = cli.command.basics();
+    let search_path = get_search_path(search_path);
 
     let treesitter = Treesitter::try_from(ts_file).unwrap_or_else(|err| {
         error_exit!("{}", err);
     });
 
-    (treesitter, get_search_path(search_path))
+    (treesitter, expand_paths(search_path))
 }
 
 fn is_python_file(path: &Path) -> bool {
