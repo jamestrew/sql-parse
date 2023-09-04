@@ -197,7 +197,7 @@ impl ReplaceConfirm {
             style((left.rng.start_point.row + 1).to_string()).green(),
             left.rng.start_point.column + 1,
         );
-        self.print_sep("SQL BLOCK");
+        self.print_before_after_sep();
 
         let left_text = self.left_side_diff(left.sql_code, left.rng);
         let right_text = self.right_side_diff(right.sql_code, right.rng);
@@ -249,6 +249,26 @@ impl ReplaceConfirm {
             "{title:━^width$}",
             title = style(title).bold(),
             width = self.term.size().1 as usize
+        );
+    }
+
+    fn print_before_after_sep(&self) {
+        let total_width = self.term.size().1 as usize;
+
+        let before = " BEFORE ";
+        let after = " AFTER ";
+
+        let remaining_width = total_width - before.len() - after.len();
+        let sep_width = remaining_width / 4;
+
+        println!(
+            "{sep:━<sep1_width$}{title1}{sep:━<sep2_width$}{title2}{sep:━<sep3_width$}",
+            sep = "",
+            title1 = style(before).bold().blue(),
+            title2 = style(after).bold().blue(),
+            sep1_width = sep_width,
+            sep2_width = sep_width * 2,
+            sep3_width = sep_width
         );
     }
 
