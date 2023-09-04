@@ -14,6 +14,7 @@ the first parameter of `crs.execute` or `crs.executemany`.
 ```
 $ sql-parse ts path/to/file.py
 $ sql-parse ts path/to/file1.py path/to/file2.py
+$ sql-parse ts path/to/directory/
 ```
 
 Specify a custom query file with `-t`
@@ -24,7 +25,7 @@ $ sql-parse ts -t path/to/treesitter/query path/to/file.py
 
 <br>
 
-Further narrow down search using regex with the `regex` subcommand.
+Further narrow the down search using regex with the `regex` subcommand.
 ```
 $ sql-parse regex 'DECLARE @' path/to/file.py
 ```
@@ -43,3 +44,8 @@ Find options to subcommands with
 ```
 $ sql-parse <subcommand> --help
 ```
+
+
+<br>
+
+![image](https://github.com/jamestrew/sql-parse/assets/66286082/d451103f-43e5-44cd-9c9e-40356e98a978)
