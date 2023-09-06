@@ -226,10 +226,10 @@ impl ReplaceConfirm {
         self.print_sep("");
         println!(
             "
-  {} yes; make this change.
-  {} no; skip this match.
-  {} all; make this change and all remaining ones without further confirmation.
-  {} quit; don't make any more changes.",
+    {} yes; make this change.
+    {} no; skip this match.
+    {} all; make this change and all remaining ones without further confirmation.
+    {} quit; don't make any more changes.",
             style("y").green(),
             style("n").red(),
             style("a").yellow(),
