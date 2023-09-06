@@ -379,7 +379,6 @@ SELECT 'hi'""";)"#;
             assert_eq!(actual, expect);
         }
 
-        #[ignore]
         #[test]
         fn multi_line() {
             let input = r#"crs.execute("""foo
@@ -387,7 +386,10 @@ SELECT 'yo';
 SELECT 'hi';""")"#;
             let rng = get_first_rng(input, "foo\nSELECT");
             let actual = CodeDiff::new_line(input, &rng).with_diff_color(console::Color::Green);
-            assert_eq!(actual, "foo");
+            assert_eq!(
+                actual,
+                "crs.execute(\"\"\"\u{1b}[32mfoo\nSELECT\u{1b}[0m 'yo';"
+            );
         }
 
         #[test]

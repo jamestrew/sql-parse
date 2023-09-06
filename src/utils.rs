@@ -43,12 +43,10 @@ fn expand_paths(search_paths: Vec<PathBuf>) -> Vec<PathBuf> {
     for path in search_paths {
         if path.is_dir() {
             if let Ok(files) = std::fs::read_dir(&path) {
-                for file in files {
-                    if let Ok(entry) = file {
-                        let path = entry.path();
-                        if path.is_file() && is_python_file(&path) {
-                            expanded.push(path);
-                        }
+                for file in files.flatten() {
+                    let path = file.path();
+                    if path.is_file() && is_python_file(&path) {
+                        expanded.push(path);
                     }
                 }
             }

@@ -23,12 +23,7 @@ impl Program for Treesitter {
         for (code, path) in iter_valid_files(&self.search_paths) {
             let path = path.as_path().to_str().unwrap();
             for block in self.treesitter.sql_blocks(&code) {
-                print(
-                    path,
-                    block.start_line_num(),
-                    None,
-                    block.inner_text(&code),
-                );
+                print(path, block.start_line_num(), None, block.inner_text(&code));
             }
         }
     }
