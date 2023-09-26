@@ -170,7 +170,9 @@ pub struct ReplaceConfirm {
 
 impl ReplaceConfirm {
     fn left_side_diff(&self, sql_code: &str, rng: &MatchRange) -> String {
-        CodeDiff::new_block(sql_code, rng).with_diff_color(console::Color::Red)
+        CodeDiff::new_block(sql_code, rng)
+            .with_diff_color(console::Color::Red)
+            .replace("\r\n", "\n")
     }
 
     fn right_side_diff(&self, sql_code: &str, rng: &MatchRange) -> String {
@@ -180,7 +182,9 @@ impl ReplaceConfirm {
             rng.block_match_range(),
             &self.replace_text,
         );
-        CodeDiff::new_raw(&before, &diff, &after).with_diff_color(console::Color::Green)
+        CodeDiff::new_raw(&before, &diff, &after)
+            .with_diff_color(console::Color::Green)
+            .replace("\r\n", "\n")
     }
 
     fn print_confirm(
