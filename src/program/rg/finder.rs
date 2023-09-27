@@ -141,12 +141,28 @@ impl FromStr for ConfirmAns {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
-            "y" | "yes" => Ok(ConfirmAns::Yes),
-            "n" | "no" => Ok(ConfirmAns::No),
-            "a" | "all" => Ok(ConfirmAns::All),
-            "q" | "quit" => Ok(ConfirmAns::Quit),
+            "y" => Ok(ConfirmAns::Yes),
+            "n" => Ok(ConfirmAns::No),
+            "a" => Ok(ConfirmAns::All),
+            "q" => Ok(ConfirmAns::Quit),
             _ => Err(anyhow::anyhow!("failed to parse confirmation input")),
         }
+    }
+}
+
+impl ConfirmAns {
+    fn as_prompt() -> String {
+        format!(
+            "
+    {y} yes; make this change.
+    {n} no; skip this match.
+    {a} all; make this change and all remaining ones without further confirmation.
+    {q} quit; don't make any more changes.",
+            y = style("y").green(),
+            n = style("n").red(),
+            a = style("a").yellow(),
+            q = style("q").cyan()
+        )
     }
 }
 
@@ -228,17 +244,7 @@ impl ReplaceConfirm {
         }
 
         self.print_sep("");
-        println!(
-            "
-    {} yes; make this change.
-    {} no; skip this match.
-    {} all; make this change and all remaining ones without further confirmation.
-    {} quit; don't make any more changes.",
-            style("y").green(),
-            style("n").red(),
-            style("a").yellow(),
-            style("q").cyan()
-        );
+        println!("{}", ConfirmAns::as_prompt());
 
         self.get_answer()
     }
@@ -277,12 +283,6 @@ impl ReplaceConfirm {
     }
 
     fn get_answer(&mut self) -> anyhow::Result<ConfirmAns> {
-        if let Some(ans) = &self.last_ans {
-            if matches!(ans, ConfirmAns::All) {
-                return Ok(ConfirmAns::All);
-            }
-        }
-
         loop {
             let ans = self.term.read_char()?.to_string().parse::<ConfirmAns>();
             if let Ok(ans) = ans {
@@ -326,7 +326,7 @@ impl Finder for ReplaceConfirm {
             };
 
             if matches!(self.find_in_file(ts, fs), FindChoice::Exit) {
-                return;
+                break;
             }
         }
         self.term.show_cursor().unwrap();
@@ -356,7 +356,8 @@ impl Finder for ReplaceConfirm {
                 let right = DiffData::new(&display_sql, &display_rng);
                 let ans = self
                     .print_confirm(&file.path, left, right)
-                    .expect("failed to print confirmation message");
+                    .expect("failed to print confirmation message or get response");
+                self.last_ans = Some(ans);
 
                 match ans {
                     ConfirmAns::Yes | ConfirmAns::All => {
@@ -378,10 +379,8 @@ impl Finder for ReplaceConfirm {
         }
 
         self.process_replacements(replacements, file);
-        if let Some(ans) = self.last_ans.as_ref() {
-            if matches!(ans, ConfirmAns::Quit) {
-                return FindChoice::Exit;
-            }
+        if matches!(self.last_ans, Some(ConfirmAns::Quit)) {
+            return FindChoice::Exit;
         }
         FindChoice::Continue
     }
