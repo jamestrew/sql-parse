@@ -1,11 +1,6 @@
-use std::io::BufRead;
 use std::path::{Path, PathBuf};
 
 use console::style;
-
-use crate::cli::Cli;
-use crate::treesitter::Treesitter;
-
 #[macro_export]
 macro_rules! error_exit {
     ($($arg:tt)*) => {{
@@ -14,30 +9,7 @@ macro_rules! error_exit {
     }};
 }
 
-fn get_search_path(search_paths: &Vec<PathBuf>) -> Vec<PathBuf> {
-    if atty::is(atty::Stream::Stdin) && search_paths.is_empty() {
-        Cli::missing_paths_error();
-    }
-
-    if search_paths.is_empty() {
-        let stdin = std::io::stdin();
-        stdin
-            .lock()
-            .lines()
-            .map(|line| {
-                if let Ok(line) = line {
-                    PathBuf::from(&line)
-                } else {
-                    error_exit!("Failed to read stdin line")
-                }
-            })
-            .collect::<Vec<_>>()
-    } else {
-        search_paths.to_owned()
-    }
-}
-
-fn expand_paths(search_paths: Vec<PathBuf>) -> Vec<PathBuf> {
+pub fn expand_paths(search_paths: Vec<PathBuf>) -> Vec<PathBuf> {
     let mut expanded = Vec::new();
 
     for path in search_paths {
@@ -55,17 +27,6 @@ fn expand_paths(search_paths: Vec<PathBuf>) -> Vec<PathBuf> {
         }
     }
     expanded
-}
-
-pub(crate) fn basic_cli_options(cli: &Cli) -> (Treesitter, Vec<PathBuf>) {
-    let (search_path, ts_file) = cli.command.basics();
-    let search_path = get_search_path(search_path);
-
-    let treesitter = Treesitter::try_from(ts_file).unwrap_or_else(|err| {
-        error_exit!("{}", err);
-    });
-
-    (treesitter, expand_paths(search_path))
 }
 
 fn is_python_file(path: &Path) -> bool {

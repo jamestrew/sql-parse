@@ -1,7 +1,11 @@
+use std::io::BufRead;
 use std::path::PathBuf;
 
 use clap::error::ErrorKind;
 use clap::{Args, CommandFactory, Parser, Subcommand};
+
+use crate::error_exit;
+use crate::utils::expand_paths;
 
 #[derive(Parser)]
 #[command(author,version,about,long_about=None)]
@@ -16,6 +20,51 @@ impl Cli {
         cli.error(ErrorKind::MissingRequiredArgument, "Missing search path(s)")
             .exit();
     }
+
+    pub fn tree_sitter(&self) -> Option<&PathBuf> {
+        match &self.command {
+            Commands::TS(Basics {
+                treesitter_query, ..
+            }) => treesitter_query,
+            Commands::Quotes(Basics {
+                treesitter_query, ..
+            }) => treesitter_query,
+            Commands::Regex(RegexOptions {
+                treesitter_query, ..
+            }) => treesitter_query,
+        }
+        .as_ref()
+    }
+
+    pub fn search_paths(&self) -> Vec<PathBuf> {
+        let paths = match &self.command {
+            Commands::TS(Basics { search_paths, .. }) => search_paths,
+            Commands::Quotes(Basics { search_paths, .. }) => search_paths,
+            Commands::Regex(RegexOptions { search_paths, .. }) => search_paths,
+        };
+
+        if atty::is(atty::Stream::Stdin) && paths.is_empty() {
+            Cli::missing_paths_error();
+        }
+
+        let paths = if paths.is_empty() {
+            let stdin = std::io::stdin();
+            stdin
+                .lock()
+                .lines()
+                .map(|line| {
+                    if let Ok(line) = line {
+                        PathBuf::from(&line)
+                    } else {
+                        error_exit!("Failed to read stdin line")
+                    }
+                })
+                .collect::<Vec<_>>()
+        } else {
+            paths.to_owned()
+        };
+        expand_paths(paths)
+    }
 }
 
 #[derive(Subcommand)]
@@ -28,27 +77,6 @@ pub enum Commands {
 
     /// Pipe tree-sitter matched nodes to regex pattern matching
     Regex(RegexOptions),
-}
-
-impl Commands {
-    pub fn basics(&self) -> (&Vec<PathBuf>, Option<&PathBuf>) {
-        let ret = match self {
-            Commands::TS(Basics {
-                search_paths,
-                treesitter_query,
-            }) => (search_paths, treesitter_query),
-            Commands::Quotes(Basics {
-                search_paths,
-                treesitter_query,
-            }) => (search_paths, treesitter_query),
-            Commands::Regex(RegexOptions {
-                search_paths,
-                treesitter_query,
-                ..
-            }) => (search_paths, treesitter_query),
-        };
-        (ret.0, ret.1.as_ref())
-    }
 }
 
 #[derive(Args)]

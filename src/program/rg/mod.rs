@@ -8,18 +8,19 @@ use finder::*;
 
 use super::Program;
 use crate::cli::{Cli, RegexOptions};
-use crate::treesitter::Treesitter;
-use crate::utils::*;
+use crate::treesitter::{ts_query_factory, TreesitterQuery};
 
 pub struct Rg {
-    treesitter: Treesitter,
+    treesitter: Box<dyn TreesitterQuery>,
     search_paths: Rc<Vec<PathBuf>>,
     finder: Box<dyn Finder>,
 }
 
 impl Program for Rg {
     fn new(cli: Cli) -> Self {
-        let (treesitter, search_paths) = basic_cli_options(&cli);
+        let treesitter = ts_query_factory(&cli);
+        let search_paths = Rc::new(cli.search_paths());
+
         let rg_opts: RegexOptions = cli.command.into();
 
         let finder: Box<dyn Finder> = match (
@@ -35,7 +36,7 @@ impl Program for Rg {
 
         Self {
             treesitter,
-            search_paths: Rc::new(search_paths),
+            search_paths,
             finder,
         }
     }

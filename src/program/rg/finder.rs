@@ -9,7 +9,7 @@ use textwrap::wrap;
 
 use super::utils::*;
 use crate::cli::RegexOptions;
-use crate::treesitter::Treesitter;
+use crate::treesitter::TreesitterQuery;
 use crate::utils::*;
 
 pub enum FindChoice {
@@ -22,7 +22,7 @@ pub trait Finder {
     where
         Self: Sized;
 
-    fn find(&mut self, ts: &mut Treesitter, search_paths: Rc<Vec<PathBuf>>) {
+    fn find(&mut self, ts: &mut Box<dyn TreesitterQuery>, search_paths: Rc<Vec<PathBuf>>) {
         for (code, path) in iter_valid_files(&search_paths) {
             let fs = FileState {
                 path: path.as_path().to_str().unwrap().to_string(),
@@ -33,7 +33,7 @@ pub trait Finder {
             let _ = self.find_in_file(ts, fs);
         }
     }
-    fn find_in_file(&mut self, ts: &mut Treesitter, file: FileState) -> FindChoice;
+    fn find_in_file(&mut self, ts: &mut Box<dyn TreesitterQuery>, file: FileState) -> FindChoice;
 }
 
 pub struct PlainSearch {
@@ -47,7 +47,7 @@ impl Finder for PlainSearch {
         }
     }
 
-    fn find_in_file(&mut self, ts: &mut Treesitter, file: FileState) -> FindChoice {
+    fn find_in_file(&mut self, ts: &mut Box<dyn TreesitterQuery>, file: FileState) -> FindChoice {
         for block in ts.sql_blocks(&file.code) {
             let sql = block.inner_text(&file.code);
             self.re
@@ -78,7 +78,7 @@ impl Finder for InverseSearch {
         }
     }
 
-    fn find_in_file(&mut self, ts: &mut Treesitter, file: FileState) -> FindChoice {
+    fn find_in_file(&mut self, ts: &mut Box<dyn TreesitterQuery>, file: FileState) -> FindChoice {
         for block in ts.sql_blocks(&file.code) {
             let sql = block.inner_text(&file.code);
 
@@ -109,7 +109,11 @@ impl Finder for Replace {
         }
     }
 
-    fn find_in_file(&mut self, ts: &mut Treesitter, mut file: FileState) -> FindChoice {
+    fn find_in_file(
+        &mut self,
+        ts: &mut Box<dyn TreesitterQuery>,
+        mut file: FileState,
+    ) -> FindChoice {
         let mut change_count = 0;
 
         ts.sql_blocks(&file.code).iter().rev().for_each(|block| {
@@ -317,7 +321,7 @@ impl Finder for ReplaceConfirm {
         }
     }
 
-    fn find(&mut self, ts: &mut Treesitter, search_paths: Rc<Vec<PathBuf>>) {
+    fn find(&mut self, ts: &mut Box<dyn TreesitterQuery>, search_paths: Rc<Vec<PathBuf>>) {
         for (code, path) in iter_valid_files(&search_paths) {
             let fs = FileState {
                 path: path.as_path().to_str().unwrap().to_string(),
@@ -332,7 +336,7 @@ impl Finder for ReplaceConfirm {
         self.term.show_cursor().unwrap();
     }
 
-    fn find_in_file(&mut self, ts: &mut Treesitter, file: FileState) -> FindChoice {
+    fn find_in_file(&mut self, ts: &mut Box<dyn TreesitterQuery>, file: FileState) -> FindChoice {
         let mut replacements = Vec::new();
         'outer: for block in ts.sql_blocks(&file.code) {
             let inner_text_range = block.inner_text_range();
