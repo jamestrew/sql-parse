@@ -2,22 +2,21 @@ use std::path::PathBuf;
 
 use super::Program;
 use crate::cli::Cli;
-use crate::treesitter::{SqlBlock, Treesitter as TS};
+use crate::treesitter::{ts_query_factory, SqlBlock, TreesitterQuery};
 use crate::utils::*;
 
 const TRIPLE_QUOTES: &str = "\"\"\"";
 
 pub(crate) struct Quotes {
-    treesitter: TS,
+    treesitter: Box<dyn TreesitterQuery>,
     search_paths: Vec<PathBuf>,
 }
 
 impl Program for Quotes {
     fn new(cli: Cli) -> Self {
-        let (treesitter, search_paths) = basic_cli_options(&cli);
         Self {
-            treesitter,
-            search_paths,
+            treesitter: ts_query_factory(&cli),
+            search_paths: cli.search_paths(),
         }
     }
 
@@ -66,11 +65,11 @@ fn is_f_string(code: &str) -> bool {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::treesitter::Treesitter;
+    use crate::treesitter::Exec;
 
     const QUERY: &str = include_str!("../../queries/execute.scm");
-    fn get_ts(query: &str) -> Treesitter {
-        Treesitter::try_from(query.to_string()).unwrap()
+    fn exec_get_ts(_query: &str) -> Exec {
+        Exec::new()
     }
 
     #[test]
@@ -78,7 +77,7 @@ mod test {
         let mut code = String::from(r"crs.execute('SELECT 1 FROM foo')");
         let expect = r#"crs.execute("""SELECT 1 FROM foo""")"#;
 
-        let mut ts = get_ts(QUERY);
+        let mut ts = exec_get_ts(QUERY);
         let blocks = ts.sql_blocks(&code);
         let block = &blocks[0];
         assert_eq!(blocks.len(), 1);
@@ -92,7 +91,7 @@ mod test {
         let mut code = String::from(r"crs.execute(f'SELECT 1 FROM foo where x = {x}')");
         let expect = r#"crs.execute(f"""SELECT 1 FROM foo where x = {x}""")"#;
 
-        let mut ts = get_ts(QUERY);
+        let mut ts = exec_get_ts(QUERY);
         let blocks = ts.sql_blocks(&code);
         let block = &blocks[0];
         assert_eq!(blocks.len(), 1);
@@ -106,7 +105,7 @@ mod test {
         let mut code = String::from(r#"crs.execute("""SELECT 1 FROM foo""")"#);
         let expect = r#"crs.execute("""SELECT 1 FROM foo""")"#;
 
-        let mut ts = get_ts(QUERY);
+        let mut ts = exec_get_ts(QUERY);
         let blocks = ts.sql_blocks(&code);
         let block = &blocks[0];
         assert_eq!(blocks.len(), 1);
@@ -120,7 +119,7 @@ mod test {
         let mut code = String::from(r#"crs.execute(f"""SELECT 1 FROM foo where x = {x}""")"#);
         let expect = r#"crs.execute(f"""SELECT 1 FROM foo where x = {x}""")"#;
 
-        let mut ts = get_ts(QUERY);
+        let mut ts = exec_get_ts(QUERY);
         let blocks = ts.sql_blocks(&code);
         let block = &blocks[0];
         assert_eq!(blocks.len(), 1);
@@ -143,7 +142,7 @@ crs.execute(f"""
     SELECT 6 FROM foo where x = {x} AND y = {y}
 """)"#;
 
-        let mut ts = get_ts(QUERY);
+        let mut ts = exec_get_ts(QUERY);
         let blocks = ts.sql_blocks(&code);
         let block = &blocks[0];
         assert_eq!(blocks.len(), 1);
@@ -178,7 +177,7 @@ crs.execute(f"""
     SELECT 6 FROM foo where x = {x} AND y = {y}
 """)"#;
 
-        let mut ts = get_ts(QUERY);
+        let mut ts = exec_get_ts(QUERY);
         let blocks = ts.sql_blocks(&code);
         for block in blocks.iter().rev() {
             replace_quotes(&mut code, block);

@@ -240,15 +240,15 @@ pub fn replace_in_range_partitioned<'h, R: Replacer>(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::treesitter::Treesitter;
+    use crate::treesitter::{Exec, TreesitterQuery};
 
-    fn ts_block(input: &str) -> SqlBlock {
-        let mut ts = Treesitter::try_from(None).unwrap();
+    fn exec_ts_block(input: &str) -> SqlBlock {
+        let mut ts = Exec::new();
         ts.sql_blocks(input).pop().unwrap()
     }
 
-    fn get_first_rng(input: &str, re_str: &str) -> MatchRange {
-        let mut ts = Treesitter::try_from(None).unwrap();
+    fn exec_get_first_rng(input: &str, re_str: &str) -> MatchRange {
+        let mut ts = Exec::new();
         let block = ts.sql_blocks(input).pop().unwrap();
         let sql = &input[block.inner_text_range()];
         let re = regex::Regex::new(re_str).unwrap();
@@ -285,7 +285,7 @@ mod test {
         #[test]
         fn one_liner() {
             let input = r#"crs.execute("SELECT 'yo'; SELECT 'hi'";)"#;
-            let rng = get_first_rng(input, "SELECT");
+            let rng = exec_get_first_rng(input, "SELECT");
             let expected = MatchRange {
                 abs_match_range: 13..19,
                 block_match_range: 0..6,
@@ -308,7 +308,7 @@ SELECT 'hi'""";)"#;
                 abs_line_range: 0..27,
                 line_match_range: 15..21,
             };
-            let rng = get_first_rng(input, "SELECT");
+            let rng = exec_get_first_rng(input, "SELECT");
             assert_rng!(rng, expected, input);
             assert_eq!(rng.match_length(), 6);
         }
@@ -318,7 +318,7 @@ SELECT 'hi'""";)"#;
             let input = r#"crs.execute("""
 SELECT 'yo';
 SELECT 'hi'""";)"#;
-            let rng = get_first_rng(input, "SELECT");
+            let rng = exec_get_first_rng(input, "SELECT");
             let expected = MatchRange {
                 abs_match_range: 16..22,
                 block_match_range: 1..7,
@@ -335,7 +335,7 @@ SELECT 'hi'""";)"#;
             let input = r#"crs.execute("""foo
 SELECT 'yo';
 SELECT 'hi'""";)"#;
-            let rng = get_first_rng(input, "foo\nSELECT");
+            let rng = exec_get_first_rng(input, "foo\nSELECT");
             let expected = MatchRange {
                 abs_match_range: 15..25,
                 block_match_range: 0..10,
@@ -353,7 +353,7 @@ SELECT 'hi'""";)"#;
 foo
 SELECT 'yo';
 SELECT 'hi'""";)"#;
-            let rng = get_first_rng(input, "foo\nSELECT");
+            let rng = exec_get_first_rng(input, "foo\nSELECT");
             let expected = MatchRange {
                 abs_match_range: 16..26,
                 block_match_range: 1..11,
@@ -372,7 +372,7 @@ SELECT 'hi'""";)"#;
         #[test]
         fn new_line() {
             let input = r#"crs.execute("SELECT 'yo'; SELECT 'hi';")"#;
-            let rng = get_first_rng(input, "SELECT");
+            let rng = exec_get_first_rng(input, "SELECT");
             let actual = CodeDiff::new_line(input, &rng).with_diff_color(console::Color::Green);
             let expect = "crs.execute(\"\u{1b}[32mSELECT\u{1b}[0m 'yo'; SELECT 'hi';\")";
 
@@ -384,7 +384,7 @@ SELECT 'hi'""";)"#;
             let input = r#"crs.execute("""foo
 SELECT 'yo';
 SELECT 'hi';""")"#;
-            let rng = get_first_rng(input, "foo\nSELECT");
+            let rng = exec_get_first_rng(input, "foo\nSELECT");
             let actual = CodeDiff::new_line(input, &rng).with_diff_color(console::Color::Green);
             assert_eq!(
                 actual,
@@ -397,8 +397,8 @@ SELECT 'hi';""")"#;
             let input = r#"crs.execute("""
 SELECT 'yo';
 SELECT 'hi';""")"#;
-            let block = ts_block(input);
-            let rng = get_first_rng(input, "SELECT");
+            let block = exec_ts_block(input);
+            let rng = exec_get_first_rng(input, "SELECT");
 
             let actual = CodeDiff::new_block(block.inner_text(input), &rng)
                 .with_diff_color(console::Color::Green);

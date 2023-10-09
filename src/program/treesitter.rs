@@ -2,20 +2,19 @@ use std::path::PathBuf;
 
 use super::Program;
 use crate::cli::Cli;
-use crate::treesitter::Treesitter as TS;
+use crate::treesitter::{ts_query_factory, TreesitterQuery};
 use crate::utils::*;
 
 pub(crate) struct Treesitter {
-    treesitter: TS,
+    treesitter: Box<dyn TreesitterQuery>,
     search_paths: Vec<PathBuf>,
 }
 
 impl Program for Treesitter {
     fn new(cli: Cli) -> Self {
-        let (treesitter, search_paths) = basic_cli_options(&cli);
         Self {
-            treesitter,
-            search_paths,
+            treesitter: ts_query_factory(&cli),
+            search_paths: cli.search_paths(),
         }
     }
 
