@@ -1,0 +1,8 @@
+---
+source: src/treesitter/custom.rs
+description: "\ncrs.execute(f\"\"\"\n    SELECT 6 FROM foo where x = {x} AND y = {y}\n\"\"\")"
+expression: snippet
+---
+
+    SELECT 6 FROM foo where x = {x} AND y = {y}
+

@@ -1,0 +1,6 @@
+---
+source: src/treesitter/custom.rs
+description: "crs.execute('SELECT 1 FROM foo')"
+expression: snippet
+---
+SELECT 1 FROM foo

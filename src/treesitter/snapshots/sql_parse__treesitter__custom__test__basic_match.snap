@@ -1,0 +1,6 @@
+---
+source: src/treesitter/custom.rs
+description: "'SELECT'"
+expression: snippet
+---
+SELECT

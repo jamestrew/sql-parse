@@ -17,5 +17,8 @@ textwrap = "0.16.0"
 tree-sitter = "0.20.10"
 tree-sitter-python = { path = "tree-sitter-python" }
 
+[dev-dependencies]
+insta = "*"
+
 [build-dependencies]
 cc = "*"
