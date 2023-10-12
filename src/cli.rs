@@ -30,7 +30,9 @@ impl Cli {
                 treesitter_query, ..
             }) => (treesitter_query, false),
             Commands::Regex(RegexOptions {
-                treesitter_query, no_ts, ..
+                treesitter_query,
+                no_ts,
+                ..
             }) => (treesitter_query, *no_ts),
         };
 
