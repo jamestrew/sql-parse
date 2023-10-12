@@ -186,14 +186,13 @@ pub struct ReplaceConfirm {
     replace_text: String,
     last_ans: Option<ConfirmAns>,
     term: Term,
+    context_lines: usize,
 }
 
 impl ReplaceConfirm {
-    const CONTEXT_LINES: usize = 3;
-
     fn left_side_diff(&self, sql_code: &str, rng: &MatchRange) -> String {
         CodeDiff::new_block(sql_code, rng)
-            .trim_context_lines(Self::CONTEXT_LINES)
+            .trim_context_lines(self.context_lines)
             .with_diff_color(console::Color::Red)
             .replace("\r\n", "\n")
     }
@@ -206,7 +205,7 @@ impl ReplaceConfirm {
             &self.replace_text,
         );
         CodeDiff::new_raw(&before, &diff, &after)
-            .trim_context_lines(Self::CONTEXT_LINES)
+            .trim_context_lines(self.context_lines)
             .with_diff_color(console::Color::Green)
             .replace("\r\n", "\n")
     }
@@ -322,6 +321,7 @@ impl Finder for ReplaceConfirm {
             replace_text: rg_opts.replace.as_ref().unwrap().to_owned(),
             last_ans: None,
             term,
+            context_lines: rg_opts.context,
         }
     }
 

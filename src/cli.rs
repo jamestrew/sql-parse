@@ -132,6 +132,10 @@ pub struct RegexOptions {
     /// Don't use tree-sitter. AKA raw regex over the entire file(s).
     #[arg(long, default_value_t = false)]
     pub no_ts: bool,
+
+    /// Number of lines to show before and after each match in `--confirm` mode. Default 15.
+    #[arg(long, default_value_t = 15)]
+    pub context: usize,
 }
 
 impl From<Commands> for RegexOptions {
