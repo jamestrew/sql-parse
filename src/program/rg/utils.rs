@@ -191,7 +191,7 @@ impl<'a> CodeDiff<'a> {
     pub fn trim_context_lines(mut self, ctx_count: usize) -> Self {
         let mut start = 0;
         let mut line_count = 0;
-        for (b_count, b) in self.before.bytes().rev().enumerate() {
+        for (b_count, b) in self.before.bytes().rev().filter(|&b| b != b'\r').enumerate() {
             if b == b'\n' {
                 line_count += 1;
             }
@@ -204,7 +204,7 @@ impl<'a> CodeDiff<'a> {
 
         let mut end = 0;
         line_count = 0;
-        for (b_count, b) in self.after.bytes().enumerate() {
+        for (b_count, b) in self.after.bytes().filter(|&b| b != b'\r').enumerate() {
             if b == b'\n' {
                 line_count += 1;
             }
