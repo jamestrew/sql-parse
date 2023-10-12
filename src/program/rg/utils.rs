@@ -175,7 +175,7 @@ impl<'a> CodeDiff<'a> {
         }
     }
 
-    pub fn with_diff_color(self, color: console::Color) -> String {
+    pub fn with_diff_color(&self, color: console::Color) -> String {
         format!(
             "{}{}{}",
             self.before,
@@ -185,6 +185,41 @@ impl<'a> CodeDiff<'a> {
                 .apply_to(self.diff),
             self.after
         )
+    }
+
+    /// trim before/after to just include `ctx_count` lines above/below
+    pub fn trim_context_lines(mut self, ctx_count: usize) -> Self {
+        let mut start = 0;
+        let mut line_count = 0;
+        for (b_count, b) in self.before.bytes().rev().enumerate() {
+            if b == b'\n' {
+                line_count += 1;
+            }
+            if line_count > ctx_count {
+                break;
+            }
+            start = b_count;
+        }
+        self.before = &self.before[self.before.bytes().len() - start - 1..];
+
+        let mut end = 0;
+        line_count = 0;
+        for (b_count, b) in self.after.bytes().enumerate() {
+            if b == b'\n' {
+                line_count += 1;
+            }
+            if line_count > ctx_count {
+                break;
+            }
+            end = b_count;
+        }
+        self.after = &self.after[..end + 1];
+
+        Self {
+            before: self.before,
+            diff: self.diff,
+            after: self.after,
+        }
     }
 }
 
@@ -455,5 +490,44 @@ SELECT 'hi';""")"#;
         assert_eq!(result.0, "The numbers 1234");
         assert_eq!(result.1, " are here, and <REDACTED> are th");
         assert_eq!(result.2, "ere.");
+    }
+
+    #[test]
+    fn code_diff_context_small() {
+        let before = "foo\nbar\nbaz";
+        let diff = "yeah";
+        let after = "\nno\neggs";
+
+        let mut cdiff = CodeDiff::new_raw(before, diff, after);
+        cdiff = cdiff.trim_context_lines(2);
+        assert_eq!(cdiff.before, before);
+        assert_eq!(cdiff.diff, diff);
+        assert_eq!(cdiff.after, after);
+    }
+
+    #[test]
+    fn code_diff_context_top_heavy() {
+        let before = "foo\nbar\nbaz";
+        let diff = "yeah";
+        let after = "\nno";
+
+        let mut cdiff = CodeDiff::new_raw(before, diff, after);
+        cdiff = cdiff.trim_context_lines(1);
+        assert_eq!(cdiff.before, "bar\nbaz");
+        assert_eq!(cdiff.diff, diff);
+        assert_eq!(cdiff.after, after);
+    }
+
+    #[test]
+    fn code_diff_context_bottom_heavy() {
+        let before = "foo";
+        let diff = "yeah";
+        let after = "\nno\neggs";
+
+        let mut cdiff = CodeDiff::new_raw(before, diff, after);
+        cdiff = cdiff.trim_context_lines(1);
+        assert_eq!(cdiff.before, "foo");
+        assert_eq!(cdiff.diff, diff);
+        assert_eq!(cdiff.after, "\nno");
     }
 }

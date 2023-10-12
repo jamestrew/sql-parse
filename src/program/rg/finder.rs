@@ -189,8 +189,11 @@ pub struct ReplaceConfirm {
 }
 
 impl ReplaceConfirm {
+    const CONTEXT_LINES: usize = 3;
+
     fn left_side_diff(&self, sql_code: &str, rng: &MatchRange) -> String {
         CodeDiff::new_block(sql_code, rng)
+            .trim_context_lines(Self::CONTEXT_LINES)
             .with_diff_color(console::Color::Red)
             .replace("\r\n", "\n")
     }
@@ -203,6 +206,7 @@ impl ReplaceConfirm {
             &self.replace_text,
         );
         CodeDiff::new_raw(&before, &diff, &after)
+            .trim_context_lines(Self::CONTEXT_LINES)
             .with_diff_color(console::Color::Green)
             .replace("\r\n", "\n")
     }
