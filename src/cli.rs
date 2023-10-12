@@ -21,19 +21,20 @@ impl Cli {
             .exit();
     }
 
-    pub fn tree_sitter(&self) -> Option<&PathBuf> {
-        match &self.command {
+    pub fn tree_sitter(&self) -> (Option<&PathBuf>, bool) {
+        let (path, no_ts) = match &self.command {
             Commands::TS(Basics {
                 treesitter_query, ..
-            }) => treesitter_query,
+            }) => (treesitter_query, false),
             Commands::Quotes(Basics {
                 treesitter_query, ..
-            }) => treesitter_query,
+            }) => (treesitter_query, false),
             Commands::Regex(RegexOptions {
-                treesitter_query, ..
-            }) => treesitter_query,
-        }
-        .as_ref()
+                treesitter_query, no_ts, ..
+            }) => (treesitter_query, *no_ts),
+        };
+
+        (path.as_ref(), no_ts)
     }
 
     pub fn search_paths(&self) -> Vec<PathBuf> {
@@ -125,6 +126,10 @@ pub struct RegexOptions {
     /// Confirm each replace. Requires --replace to be used.
     #[arg(short, long, default_value_t = false, requires = "replace")]
     pub confirm: bool,
+
+    /// Don't use tree-sitter. AKA raw regex over the entire file(s).
+    #[arg(long, default_value_t = false)]
+    pub no_ts: bool,
 }
 
 impl From<Commands> for RegexOptions {

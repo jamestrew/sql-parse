@@ -1,10 +1,12 @@
 mod custom;
 mod exec;
+mod no_ts;
 
 use std::ops::Range;
 
 pub use custom::CustomQuery;
 pub use exec::Exec;
+pub use no_ts::NoTS;
 use tree_sitter::{Node, Parser, Point, Query, Tree};
 use tree_sitter_python::language as Python;
 
@@ -19,8 +21,9 @@ pub trait TreesitterQuery {
 
 pub fn ts_query_factory(cli: &Cli) -> Box<dyn TreesitterQuery> {
     match cli.tree_sitter() {
-        Some(path) => Box::new(CustomQuery::from(path)),
-        None => Box::new(Exec::new()),
+        (_, true) => Box::new(NoTS::new()),
+        (Some(path), _) => Box::new(CustomQuery::from(path)),
+        (None, _) => Box::new(Exec::new()),
     }
 }
 
