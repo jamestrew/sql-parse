@@ -217,19 +217,14 @@ impl ReplaceConfirm {
         right: DiffData,
     ) -> anyhow::Result<ConfirmAns> {
         self.term.clear_screen()?;
+        let max_length = (self.term.size().1 as usize / 2) - 2;
 
-        println!(
-            "{}:{}:{}",
-            style(path).magenta(),
-            style((left.rng.start_point.row + 1).to_string()).green(),
-            left.rng.start_point.column + 1,
-        );
+        println!("{}", self.header(path, &left, max_length));
+
         self.print_before_after_sep();
 
         let left_text = self.left_side_diff(left.sql_code, left.rng);
         let right_text = self.right_side_diff(right.sql_code, right.rng);
-
-        let max_length = (self.term.size().1 as usize / 2) - 2;
 
         let lines_left = wrap(&left_text, max_length)
             .iter()
@@ -267,6 +262,25 @@ impl ReplaceConfirm {
             title = style(title).bold(),
             width = self.term.size().1 as usize
         );
+    }
+
+    fn header(&self, path: &str, left: &DiffData, max_length: usize) -> String {
+        let match_info = format!(
+            "{}:{}:{}",
+            style(path).magenta(),
+            style((left.rng.start_point.row + 1).to_string()).green(),
+            left.rng.start_point.column + 1,
+        );
+        let match_info = pad_str(&match_info, max_length, console::Alignment::Left, None);
+
+        format!(
+            "{}\n{}: {}\n{}: {}",
+            match_info,
+            style("Search Pattern").red(),
+            self.re,
+            style("Replace Pattern").green(),
+            self.replace_text
+        )
     }
 
     fn print_before_after_sep(&self) {

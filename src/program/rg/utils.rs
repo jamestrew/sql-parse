@@ -200,7 +200,7 @@ impl<'a> CodeDiff<'a> {
             }
             start = idx;
         }
-        self.before = &self.before[self.before.bytes().count() - start - 1..].trim_start();
+        self.before = &self.before[self.before.bytes().len() - start - 1..].trim_start();
 
         let mut end = 0;
         let ctx_count = ctx_count + Self::compensate_context(ctx_count, line_count);
@@ -223,8 +223,12 @@ impl<'a> CodeDiff<'a> {
         }
     }
 
-    fn compensate_context(ctx_count: usize, remaining:usize) -> usize {
-        if ctx_count < remaining { 0 } else { ctx_count - remaining }
+    fn compensate_context(ctx_count: usize, remaining: usize) -> usize {
+        if ctx_count < remaining {
+            0
+        } else {
+            ctx_count - remaining
+        }
     }
 }
 
