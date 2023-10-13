@@ -57,4 +57,4 @@ $ sql-parse <subcommand> --help
 
 <br>
 
-![image](https://github.com/jamestrew/sql-parse/assets/66286082/d451103f-43e5-44cd-9c9e-40356e98a978)
+![image](https://github.com/jamestrew/sql-parse/assets/66286082/daa66764-0fc7-4c75-888b-b675208a5d54)
