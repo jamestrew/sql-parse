@@ -89,9 +89,9 @@ mod test {
 
     const SQL_STRING: &str = r#"
 (string
-  (string_start) @ss
-  (string_content) @str (#match? @str "SELECT|FROM|WHERE|UPDATE|INSERT")
-  (string_end) @se)"#;
+    (string_start) @ss
+    (string_content) @str (#match? @str "SELECT|FROM|WHERE|UPDATE|INSERT")
+    (string_end) @se)"#;
 
     macro_rules! ss_display_stmt {
         ($name:tt, $code:expr) => {
@@ -123,9 +123,9 @@ mod test {
     ss_display_stmt!(
         multiline_f_string,
         r#"
-crs.execute(f"""
+    crs.execute(f"""
     SELECT 6 FROM foo where x = {x} AND y = {y}
-""")"#
+    """)"#
     );
 
     #[test]

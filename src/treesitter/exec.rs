@@ -40,6 +40,28 @@ impl Exec {
             }
         }
     }
+
+    fn weird_concat_str(&self, cat_node: Node<'_>, sql_blocks: &mut Vec<SqlBlock>) {
+        let mut tc = cat_node.walk();
+
+        for node in cat_node.children(&mut tc) {
+            if node.kind() == "string" {
+                self.basic_string_sql(node, sql_blocks);
+            }
+        }
+    }
+
+    fn binary_operator_str(&self, infix_node: Node<'_>, sql_blocks: &mut Vec<SqlBlock>) {
+        let mut tc = infix_node.walk();
+
+        for node in infix_node.children(&mut tc) {
+            match node.kind() {
+                "string" => self.basic_string_sql(node, sql_blocks),
+                "binary_operator" => self.binary_operator_str(node, sql_blocks),
+                _ => (),
+            }
+        }
+    }
 }
 
 impl TreesitterQuery for Exec {
@@ -61,6 +83,8 @@ impl TreesitterQuery for Exec {
                     match arg_node.kind() {
                         "string" => self.basic_string_sql(arg_node, &mut sql_blocks),
                         "call" => self.format_string_sql(arg_node, &mut sql_blocks),
+                        "concatenated_string" => self.weird_concat_str(arg_node, &mut sql_blocks),
+                        "binary_operator" => self.binary_operator_str(arg_node, &mut sql_blocks),
                         _ => continue,
                     };
                     break 'outer;
@@ -76,7 +100,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn exec_matching_node_ranges() {
+    fn multi_match_file() {
         let code = r#"
 crs.execute('SELECT 1 FROM foo')
 crs.execute(f'SELECT 2 FROM foo WHERE x = {x}')
@@ -92,6 +116,9 @@ crs.execute(f"""
 
 crs.execute('SELECT 1 FROM foo', "foo")
 crs.execute('SELECT 1 FROM {foo}'.format(foo="foo"))
+crs.execute('foo ' 'bar')
+crs.execute('eggs' + 'spam')
+crs.execute('green' + 'eggs' + 'spam')
 "#;
 
         let expect = [
@@ -103,6 +130,13 @@ crs.execute('SELECT 1 FROM {foo}'.format(foo="foo"))
             "\n    SELECT 6 FROM foo where x = {x} AND y = {y}\n",
             "SELECT 1 FROM foo",
             "SELECT 1 FROM {foo}",
+            "foo ",
+            "bar",
+            "eggs",
+            "spam",
+            "green",
+            "eggs",
+            "spam",
         ];
 
         let mut ts = Exec::new();
@@ -116,3 +150,34 @@ crs.execute('SELECT 1 FROM {foo}'.format(foo="foo"))
         }
     }
 }
+
+/*
+
+(binary_operator) ; [4:13 - 25]
+left: (string) ; [4:13 - 17]
+ (string_start) ; [4:13 - 13]
+ (string_content) ; [4:14 - 16]
+ (string_end) ; [4:17 - 17]
+right: (string) ; [4:21 - 25]
+ (string_start) ; [4:21 - 21]
+ (string_content) ; [4:22 - 24]
+ (string_end) ; [4:25 - 25]
+
+
+
+(binary_operator) ; [5:13 - 31]
+left: (binary_operator) ; [5:13 - 23]
+ left: (string) ; [5:13 - 17]
+  (string_start) ; [5:13 - 13]
+  (string_content) ; [5:14 - 16]
+  (string_end) ; [5:17 - 17]
+ right: (string) ; [5:21 - 23]
+  (string_start) ; [5:21 - 21]
+  (string_content) ; [5:22 - 22]
+  (string_end) ; [5:23 - 23]
+right: (string) ; [5:27 - 31]
+ (string_start) ; [5:27 - 27]
+ (string_content) ; [5:28 - 30]
+ (string_end) ; [5:31 - 31]
+
+*/
