@@ -201,7 +201,7 @@ impl<'a> CodeDiff<'a> {
             start = idx;
         }
         self.before =
-            &self.before[self.before.bytes().len() - start - 1..].trim_start_matches("\r");
+            &self.before[self.before.bytes().len() - start - 1..].trim_start_matches('\r');
 
         let mut end = 0;
         let ctx_count = ctx_count + Self::compensate_context(ctx_count, line_count);
