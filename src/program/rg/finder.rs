@@ -292,14 +292,16 @@ impl ReplaceConfirm {
         let remaining_width = total_width - before.len() - after.len();
         let sep_width = remaining_width / 4;
 
+        let mid_sep = total_width - (sep_width * 2 + before.len() + after.len());
+
         println!(
             "{sep:━<sep1_width$}{title1}{sep:━<sep2_width$}{title2}{sep:━<sep3_width$}",
             sep = "",
             title1 = style(before).bold().blue(),
             title2 = style(after).bold().blue(),
             sep1_width = sep_width,
-            sep2_width = sep_width * 2,
-            sep3_width = sep_width
+            sep2_width = mid_sep,
+            sep3_width = sep_width,
         );
     }
 
