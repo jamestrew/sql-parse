@@ -16,4 +16,4 @@ lint:
 
 build:
 	@cargo build --target x86_64-unknown-linux-musl --release
-	tar czf sql-parse.tar.gz ./target/x86_64-unknown-linux-musl/release/sql-parse
+	tar czf sql-parse.tar.gz -C ./target/x86_64-unknown-linux-musl/release/ sql-parse
