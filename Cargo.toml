@@ -1,6 +1,6 @@
 [package]
 name = "sql-parse"
-version = "0.3.5"
+version = "0.4.2"
 edition = "2021"
 authors = ["James Trew"]
 description = "Use the power of tree-sitter to parse Python embedded SQL code."
@@ -14,6 +14,8 @@ clap = { version = "4.3.11", features = ["derive"] }
 console = "0.15.7"
 regex = "1.9.1"
 textwrap = "0.16.0"
+tracing = "0.1.40"
+tracing-subscriber = "0.3.17"
 tree-sitter = "0.20.10"
 tree-sitter-python = { path = "tree-sitter-python" }
 

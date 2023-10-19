@@ -17,3 +17,5 @@ crs.execute(f"SELECT * FROM {f}")
 crs.execute("SELECT * FROM {foo}".format(foo=f))
 crs.execute("SELECT * FROM {foo}".format(foo=f), "foo")
 crs.execute("SELECT * " "FROM foobarbaz")
+
+crs.execute(f"select [update] from [dbo].[my_table] where [bar] = {f}")

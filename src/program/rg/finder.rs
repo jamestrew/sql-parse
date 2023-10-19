@@ -390,11 +390,11 @@ impl Finder for ReplaceConfirm {
                         display_sql = replace_in_range(
                             &self.re,
                             &display_sql,
-                            rng.block_match_range(),
+                            display_rng.block_match_range(),
                             &self.replace_text,
                         )
                         .to_string();
-                        shift = display_sql.len() as isize - pre_replace_len as isize;
+                        shift += display_sql.len() as isize - pre_replace_len as isize;
                     }
                     ConfirmAns::No => {}
                     ConfirmAns::Quit => break 'outer,

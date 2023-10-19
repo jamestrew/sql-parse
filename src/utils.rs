@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use console::style;
+
 #[macro_export]
 macro_rules! error_exit {
     ($($arg:tt)*) => {{
